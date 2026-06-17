@@ -4,4 +4,3 @@ build/
 .idea/
 .vscode/
 *.lock
-lib/firebase_options.dart
