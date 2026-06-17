@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "255181738766",
+    "project_id": "aa-stroypro-apk-v2-9b801",
+    "storage_bucket": "aa-stroypro-apk-v2-9b801.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:255181738766:android:f0e8207a30376e5a4e3d5f",
+        "android_client_info": {
+          "package_name": "com.example.aa_stroypro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2u_oYeW30C1K0rIY7BFpVFOQQROkBMH8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
