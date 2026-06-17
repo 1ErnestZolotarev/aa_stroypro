@@ -4,5 +4,4 @@ build/
 .idea/
 .vscode/
 *.lock
-android/app/google-services.json
 lib/firebase_options.dart
