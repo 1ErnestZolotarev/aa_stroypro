@@ -9,21 +9,64 @@ import 'screens/home_screen.dart';
 import 'screens/create_order_screen.dart';
 import 'widgets/adaptive_layout.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Даём телефону время на подключение к сети
-  await Future.delayed(const Duration(seconds: 3));
-  
-  try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    runApp(const MyApp());
-  } catch (e) {
-    runApp(MaterialApp(
+  runApp(const InitScreen());
+}
+
+class InitScreen extends StatefulWidget {
+  const InitScreen({super.key});
+
+  @override
+  State<InitScreen> createState() => _InitScreenState();
+}
+
+class _InitScreenState extends State<InitScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _initFirebase();
+  }
+
+  Future<void> _initFirebase() async {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MyApp()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Ошибка'),
+            content: Text('$e'),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
       home: Scaffold(
-        body: Center(child: Text('Ошибка: $e')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Загрузка...'),
+            ],
+          ),
+        ),
       ),
-    ));
+    );
   }
 }
 
