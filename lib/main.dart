@@ -12,11 +12,19 @@ import 'widgets/adaptive_layout.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Задержка для Honor/Huawei — даём телефону подключиться к сети
-  await Future.delayed(const Duration(seconds: 2));
+  // Даём телефону время на подключение к сети
+  await Future.delayed(const Duration(seconds: 3));
   
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    runApp(const MyApp());
+  } catch (e) {
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('Ошибка: $e')),
+      ),
+    ));
+  }
 }
 
 class MyApp extends StatelessWidget {
