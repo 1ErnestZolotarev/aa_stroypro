@@ -11,6 +11,10 @@ import 'widgets/adaptive_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Задержка для Honor/Huawei — даём телефону подключиться к сети
+  await Future.delayed(const Duration(seconds: 2));
+  
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }

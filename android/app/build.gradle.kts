@@ -16,7 +16,7 @@ android {
     defaultConfig {
         applicationId = "com.example.aa_stroypro"
         minSdk = flutter.minSdkVersion
-        targetSdk = 33
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
