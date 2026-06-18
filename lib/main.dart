@@ -34,14 +34,17 @@ class _InitScreenState extends State<InitScreen> {
   Future<void> _initFirebase() async {
     try {
       setState(() => _status = 'Подключение к Firebase...');
-      
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Firebase init timeout'),
-      );
-      
+
+      // Проверяем, не инициализирован ли уже Firebase
+      try {
+        Firebase.app();
+        // Если приложение уже есть, просто переходим дальше
+      } catch (_) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MyApp()),
