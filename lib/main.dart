@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -10,88 +9,18 @@ import 'screens/home_screen.dart';
 import 'screens/create_order_screen.dart';
 import 'widgets/adaptive_layout.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const InitScreen());
-}
-
-class InitScreen extends StatefulWidget {
-  const InitScreen({super.key});
-
-  @override
-  State<InitScreen> createState() => _InitScreenState();
-}
-
-class _InitScreenState extends State<InitScreen> {
-  String _status = 'Инициализация...';
-
-  @override
-  void initState() {
-    super.initState();
-    _initFirebase();
-  }
-
-  Future<void> _initFirebase() async {
-    try {
-      setState(() => _status = 'Подключение к Firebase...');
-
-      // Проверяем, не инициализирован ли уже Firebase
-      try {
-        Firebase.app();
-        // Если приложение уже есть, просто переходим дальше
-      } catch (_) {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-      }
-
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MyApp()),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _status = 'Ошибка: $e');
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!_status.startsWith('Ошибка'))
-                  const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                Text(
-                  _status,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                if (_status.startsWith('Ошибка')) ...[
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() => _status = 'Инициализация...');
-                      _initFirebase();
-                    },
-                    child: const Text('Повторить'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
+  
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
     );
+  } catch (e) {
+    // Если уже инициализирован - игнорируем
   }
+  
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
