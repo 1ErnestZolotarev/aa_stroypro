@@ -40,7 +40,14 @@ class SearchService {
   }
 
   /// Проверяет, соответствует ли заказ поисковому запросу
-  static bool matchesSearch(String title, String description, List<String> keywords, String searchQuery) {
+  /// Ищет по названию, описанию, ключевым словам И городу
+  static bool matchesSearch(
+    String title,
+    String description,
+    List<String> keywords,
+    String city,
+    String searchQuery,
+  ) {
     if (searchQuery.isEmpty) return true;
 
     final queryLower = searchQuery.toLowerCase().trim();
@@ -50,15 +57,19 @@ class SearchService {
     for (var queryWord in queryWords) {
       bool found = false;
 
-      // Ищем в заголовке (подстрока)
+      // 1. Ищем в заголовке (подстрока)
       if (title.toLowerCase().contains(queryWord)) {
         found = true;
       }
-      // Ищем в описании (подстрока)
+      // 2. Ищем в описании (подстрока)
       else if (description.toLowerCase().contains(queryWord)) {
         found = true;
       }
-      // Ищем в ключевых словах (включая синонимы)
+      // 3. Ищем в городе (подстрока)
+      else if (city.toLowerCase().contains(queryWord)) {
+        found = true;
+      }
+      // 4. Ищем в ключевых словах (включая синонимы)
       else {
         for (var kw in keywords) {
           if (kw.toLowerCase().contains(queryWord)) {

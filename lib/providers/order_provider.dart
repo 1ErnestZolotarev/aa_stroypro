@@ -39,11 +39,9 @@ class OrderProvider with ChangeNotifier {
           .collection('orders')
           .orderBy('createdAt', descending: true);
 
-      // Пытаемся фильтровать по городу на сервере
       if (city != null && city.isNotEmpty) {
         query = query.where('city', isEqualTo: city);
       }
-      // Пытаемся фильтровать по типу на сервере
       if (typeFilter != null && typeFilter != 'all') {
         query = query.where('type', isEqualTo: typeFilter);
       }
@@ -66,11 +64,9 @@ class OrderProvider with ChangeNotifier {
         _hasMore = false;
       }
 
-      // Локальная фильтрация (на всякий случай, если серверная не сработала)
       _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
     } catch (e) {
       debugPrint('Ошибка загрузки с фильтрами: $e');
-      // Если ошибка из-за отсутствия индекса — загружаем без фильтров
       try {
         Query query = FirebaseFirestore.instance
             .collection('orders')
@@ -94,7 +90,6 @@ class OrderProvider with ChangeNotifier {
           _hasMore = false;
         }
 
-        // Фильтруем всё локально
         _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
       } catch (e2) {
         debugPrint('Повторная ошибка: $e2');
@@ -111,7 +106,7 @@ class OrderProvider with ChangeNotifier {
     String? typeFilter,
   }) {
     _filteredOrders = _allOrders.where((order) {
-      // Фильтр по городу
+      // Фильтр по городу (из выпадающего списка)
       if (city != null && city.isNotEmpty && order.city != city) {
         return false;
       }
@@ -119,10 +114,10 @@ class OrderProvider with ChangeNotifier {
       if (typeFilter != null && typeFilter != 'all' && order.type != typeFilter) {
         return false;
       }
-      // Фильтр по поисковому слову
+      // Фильтр по поисковому слову (теперь ищет и по городу!)
       if (searchWord != null && searchWord.isNotEmpty) {
         if (!SearchService.matchesSearch(
-            order.title, order.description, order.keywords, searchWord)) {
+            order.title, order.description, order.keywords, order.city, searchWord)) {
           return false;
         }
       }
