@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
+import '../services/search_service.dart';
 
 class OrderProvider with ChangeNotifier {
-  List<ServiceOrder> _orders = [];
+  List<ServiceOrder> _allOrders = []; // Все загруженные заказы
+  List<ServiceOrder> _filteredOrders = []; // Отфильтрованные
   DocumentSnapshot? _lastDocument;
   bool _loading = false;
   bool _hasMore = true;
 
-  List<ServiceOrder> get orders => _orders;
+  List<ServiceOrder> get orders => _filteredOrders;
   bool get loading => _loading;
   bool get hasMore => _hasMore;
 
   void resetPagination() {
-    _orders.clear();
+    _allOrders.clear();
+    _filteredOrders.clear();
     _lastDocument = null;
     _hasMore = true;
   }
@@ -36,15 +39,6 @@ class OrderProvider with ChangeNotifier {
           .collection('orders')
           .orderBy('createdAt', descending: true);
 
-      // Применяем фильтры по одному, чтобы избежать проблем с индексами
-      if (city != null && city.isNotEmpty) {
-        query = query.where('city', isEqualTo: city);
-      }
-      if (typeFilter != null && typeFilter != 'all') {
-        query = query.where('type', isEqualTo: typeFilter);
-      }
-      
-      // Поиск по ключевым словам делаем на клиенте (для простоты)
       if (_lastDocument != null) {
         query = query.startAfterDocument(_lastDocument!);
       }
@@ -55,28 +49,46 @@ class OrderProvider with ChangeNotifier {
           .map((doc) => ServiceOrder.fromMap(doc.id, doc.data() as Map<String, dynamic>))
           .toList();
 
-      // Фильтрация по searchWord на клиенте
-      if (searchWord != null && searchWord.isNotEmpty) {
-        final searchLower = searchWord.toLowerCase();
-        fetchedOrders = fetchedOrders.where((order) {
-          return order.title.toLowerCase().contains(searchLower) ||
-                 order.description.toLowerCase().contains(searchLower) ||
-                 order.keywords.any((kw) => kw.toLowerCase().contains(searchLower));
-        }).toList();
-      }
-
       if (fetchedOrders.isNotEmpty) {
-        _orders.addAll(fetchedOrders);
+        _allOrders.addAll(fetchedOrders);
         _lastDocument = snapshot.docs.last;
         _hasMore = snapshot.docs.length == 20;
       } else {
         _hasMore = false;
       }
+
+      // Применяем локальные фильтры
+      _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
     } catch (e) {
       debugPrint('Ошибка загрузки: $e');
     }
 
     _loading = false;
     notifyListeners();
+  }
+
+  void _applyLocalFilters({
+    String? city,
+    String? searchWord,
+    String? typeFilter,
+  }) {
+    _filteredOrders = _allOrders.where((order) {
+      // Фильтр по городу
+      if (city != null && city.isNotEmpty && order.city != city) {
+        return false;
+      }
+      // Фильтр по типу
+      if (typeFilter != null && typeFilter != 'all' && order.type != typeFilter) {
+        return false;
+      }
+      // Фильтр по поисковому слову
+      if (searchWord != null && searchWord.isNotEmpty) {
+        if (!SearchService.matchesSearch(
+            order.title, order.description, order.keywords, searchWord)) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
   }
 }
