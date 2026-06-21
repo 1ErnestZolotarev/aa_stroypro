@@ -1,12 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../models/order_model.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // --- Orders ---
   Stream<List<ServiceOrder>> getOrdersStream({
@@ -38,20 +36,12 @@ class FirestoreService {
     await _firestore.collection('orders').doc(order.id).set(order.toMap());
   }
 
-  /// Обновление существующего объявления
   Future<void> updateOrder(ServiceOrder order) async {
     await _firestore.collection('orders').doc(order.id).update(order.toMap());
   }
 
-  /// Загружает фото в Storage и возвращает URL
-  Future<String> uploadPhoto(String orderId, int index, dynamic file) async {
-    final ref = _storage.ref().child('orders/$orderId/photo_$index.jpg');
-    if (file is String) {
-      await ref.putFile(/* file */);
-    } else {
-      await ref.putData(file);
-    }
-    return await ref.getDownloadURL();
+  Future<void> deleteOrder(String orderId) async {
+    await _firestore.collection('orders').doc(orderId).delete();
   }
 
   // --- Chats ---

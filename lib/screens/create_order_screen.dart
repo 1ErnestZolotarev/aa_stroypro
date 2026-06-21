@@ -1,14 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/search_service.dart';
 
 class CreateOrderScreen extends StatefulWidget {
-  final ServiceOrder? existingOrder; // null = создание, не null = редактирование
+  final ServiceOrder? existingOrder;
 
   const CreateOrderScreen({super.key, this.existingOrder});
 
@@ -24,8 +23,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   late TextEditingController _cityCtrl;
   late String _type;
   bool _isPublishing = false;
-  final List<File> _photos = [];
-  final ImagePicker _picker = ImagePicker();
 
   bool get _isEditing => widget.existingOrder != null;
 
@@ -54,21 +51,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       if (w.isEmpty) return '';
       return '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}';
     }).join(' ');
-  }
-
-  Future<void> _pickPhoto() async {
-    if (_photos.length >= 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Максимум 5 фото')),
-      );
-      return;
-    }
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _photos.add(File(image.path));
-      });
-    }
   }
 
   @override
@@ -125,43 +107,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 enabled: false,
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Text('Фото (до 5):', style: TextStyle(fontSize: 16)),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.add_photo_alternate),
-                    label: const Text('Добавить'),
-                    onPressed: _pickPhoto,
-                  ),
-                ],
-              ),
-              if (_photos.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 100,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _photos.length,
-                    itemBuilder: (ctx, i) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Stack(
-                        children: [
-                          Image.file(_photos[i], width: 100, height: 100, fit: BoxFit.cover),
-                          Positioned(
-                            top: 0, right: 0,
-                            child: GestureDetector(
-                              onTap: () => setState(() => _photos.removeAt(i)),
-                              child: const Icon(Icons.cancel, color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'request', label: Text('Ищу исполнителя')),
@@ -207,7 +152,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           city: _normalizeCity(_cityCtrl.text),
           type: _type,
           keywords: keywords,
-          photoUrls: _isEditing ? widget.existingOrder!.photoUrls : [],
           createdAt: _isEditing ? widget.existingOrder!.createdAt : DateTime.now(),
         );
 
@@ -258,10 +202,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
 
     if (confirm == true && mounted) {
-      await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(widget.existingOrder!.id)
-          .delete();
+      await FirestoreService().deleteOrder(widget.existingOrder!.id);
       Navigator.pop(context);
     }
   }

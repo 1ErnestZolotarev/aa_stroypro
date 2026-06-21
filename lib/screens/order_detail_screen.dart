@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/order_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
@@ -41,29 +40,6 @@ class OrderDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (order.photoUrls.isNotEmpty) ...[
-              SizedBox(
-                height: 250,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: order.photoUrls.length,
-                  itemBuilder: (ctx, i) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: CachedNetworkImage(
-                        imageUrl: order.photoUrls[i],
-                        width: 300,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 80),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
             Text('Автор: ${order.authorName}', style: const TextStyle(fontSize: 18)),
             const SizedBox(height: 8),
             Text('Город: ${order.city}'),
