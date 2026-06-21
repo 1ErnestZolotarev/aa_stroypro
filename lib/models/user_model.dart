@@ -3,7 +3,7 @@ class AppUser {
   final String name;
   final String phone;
   final String city;
-  final String role; // 'executor' или 'customer'
+  final String role;
   final String? avatarUrl;
   final DateTime createdAt;
 
@@ -23,17 +23,19 @@ class AppUser {
         'phone': phone,
         'city': city,
         'role': role,
-        'avatarUrl': avatarUrl,
+        'avatarUrl': avatarUrl ?? '',
         'createdAt': createdAt.toIso8601String(),
       };
 
   factory AppUser.fromMap(Map<String, dynamic> map) => AppUser(
-        uid: map['uid'],
-        name: map['name'],
-        phone: map['phone'],
-        city: map['city'],
-        role: map['role'],
-        avatarUrl: map['avatarUrl'],
-        createdAt: DateTime.parse(map['createdAt']),
+        uid: map['uid'] ?? '',
+        name: map['name'] ?? '',
+        phone: map['phone'] ?? '',
+        city: map['city'] ?? '',
+        role: map['role'] ?? 'customer',
+        avatarUrl: map['avatarUrl'] is String ? map['avatarUrl'] : null,
+        createdAt: map['createdAt'] != null
+            ? DateTime.parse(map['createdAt'])
+            : DateTime.now(),
       );
 }
