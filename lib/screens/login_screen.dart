@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'email_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -90,6 +91,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: auth.loading
                       ? const CircularProgressIndicator()
                       : const Text('Войти'),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const EmailScreen(isLinking: false),
+                    ),
+                  ),
+                  child: const Text('Вход по Email (восстановление)'),
                 ),
               ],
             ),

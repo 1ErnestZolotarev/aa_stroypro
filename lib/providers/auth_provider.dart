@@ -13,6 +13,8 @@ class AuthProvider with ChangeNotifier {
   AppUser? get user => _user;
   bool get loading => _loading;
   String? get error => _error;
+  bool get hasEmailProvider => _auth.hasEmailProvider;
+  String? get currentEmail => _auth.currentEmail;
 
   AuthProvider() {
     _auth.authStateChanges.listen((firebaseUser) async {
@@ -44,7 +46,42 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Обновление профиля
+  /// Привязка email
+  Future<void> linkEmail(String email, String password) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _auth.linkEmail(email, password);
+      // Обновляем email в профиле
+      _user = await _auth.getCurrentUser();
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Ошибка привязки email: $e');
+    }
+
+    _loading = false;
+    notifyListeners();
+  }
+
+  /// Вход по email (для восстановления)
+  Future<void> signInWithEmail(String email, String password) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _user = await _auth.signInWithEmail(email, password);
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Ошибка входа по email: $e');
+    }
+
+    _loading = false;
+    notifyListeners();
+  }
+
   Future<void> updateProfile({
     String? name,
     String? phone,
