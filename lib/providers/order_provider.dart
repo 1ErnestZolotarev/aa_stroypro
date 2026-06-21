@@ -21,7 +21,7 @@ class OrderProvider with ChangeNotifier {
   Future<void> fetchOrders({
     String? city,
     String? searchWord,
-    String? typeFilter,   // 'all', 'request', 'offer'
+    String? typeFilter,
     bool initialLoad = false,
   }) async {
     if (_loading) return;
@@ -36,24 +36,37 @@ class OrderProvider with ChangeNotifier {
           .collection('orders')
           .orderBy('createdAt', descending: true);
 
+      // Применяем фильтры по одному, чтобы избежать проблем с индексами
       if (city != null && city.isNotEmpty) {
         query = query.where('city', isEqualTo: city);
-      }
-      if (searchWord != null && searchWord.isNotEmpty) {
-        query = query.where('keywords', arrayContains: searchWord.toLowerCase());
       }
       if (typeFilter != null && typeFilter != 'all') {
         query = query.where('type', isEqualTo: typeFilter);
       }
+      
+      // Поиск по ключевым словам делаем на клиенте (для простоты)
       if (_lastDocument != null) {
         query = query.startAfterDocument(_lastDocument!);
       }
       query = query.limit(20);
 
       final snapshot = await query.get();
-      if (snapshot.docs.isNotEmpty) {
-        _orders.addAll(
-            snapshot.docs.map((doc) => ServiceOrder.fromMap(doc.id, doc.data() as Map<String, dynamic>)));
+      List<ServiceOrder> fetchedOrders = snapshot.docs
+          .map((doc) => ServiceOrder.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+          .toList();
+
+      // Фильтрация по searchWord на клиенте
+      if (searchWord != null && searchWord.isNotEmpty) {
+        final searchLower = searchWord.toLowerCase();
+        fetchedOrders = fetchedOrders.where((order) {
+          return order.title.toLowerCase().contains(searchLower) ||
+                 order.description.toLowerCase().contains(searchLower) ||
+                 order.keywords.any((kw) => kw.toLowerCase().contains(searchLower));
+        }).toList();
+      }
+
+      if (fetchedOrders.isNotEmpty) {
+        _orders.addAll(fetchedOrders);
         _lastDocument = snapshot.docs.last;
         _hasMore = snapshot.docs.length == 20;
       } else {

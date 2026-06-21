@@ -19,6 +19,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final _budgetCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   String _type = 'request';
+  bool _isPublishing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -52,43 +53,79 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 validator: (v) => v!.isEmpty ? 'Укажите город' : null,
               ),
               const SizedBox(height: 16),
+              // Поле для контакта
+              TextFormField(
+                initialValue: user.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Контактный телефон',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                enabled: false,
+              ),
+              const SizedBox(height: 16),
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'request', label: Text('Ищу исполнителя')),
                   ButtonSegment(value: 'offer', label: Text('Предлагаю услуги')),
                 ],
                 selected: {_type},
-                onSelectionChanged: (s) => setState(() => _type = s.first),
+                onSelectionChanged: _isPublishing
+                    ? null
+                    : (s) => setState(() => _type = s.first),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    final fullText = '${_titleCtrl.text} ${_descCtrl.text}';
-                    final keywords = SearchService.extractKeywords(fullText);
-                    final order = ServiceOrder(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      authorId: user.uid,
-                      authorName: user.name,
-                      authorPhone: user.phone,
-                      title: _titleCtrl.text,
-                      description: _descCtrl.text,
-                      budget: int.tryParse(_budgetCtrl.text) ?? 0,
-                      city: _cityCtrl.text,
-                      type: _type,
-                      keywords: keywords,
-                      createdAt: DateTime.now(),
-                    );
-                    await FirestoreService().addOrder(order);
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('Опубликовать'),
-              ),
+              _isPublishing
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _publishOrder,
+                      child: const Text('Опубликовать'),
+                    ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _publishOrder() async {
+    if (_formKey.currentState!.validate() && !_isPublishing) {
+      setState(() => _isPublishing = true);
+
+      try {
+        final user = context.read<AuthProvider>().user!;
+        final fullText = '${_titleCtrl.text} ${_descCtrl.text}';
+        final keywords = SearchService.extractKeywords(fullText);
+        final order = ServiceOrder(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          authorId: user.uid,
+          authorName: user.name,
+          authorPhone: user.phone,
+          title: _titleCtrl.text,
+          description: _descCtrl.text,
+          budget: int.tryParse(_budgetCtrl.text) ?? 0,
+          city: _cityCtrl.text,
+          type: _type,
+          keywords: keywords,
+          createdAt: DateTime.now(),
+        );
+        await FirestoreService().addOrder(order);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Объявление опубликовано!')),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isPublishing = false);
+        }
+      }
+    }
   }
 }
