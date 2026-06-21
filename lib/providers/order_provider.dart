@@ -4,8 +4,8 @@ import '../models/order_model.dart';
 import '../services/search_service.dart';
 
 class OrderProvider with ChangeNotifier {
-  List<ServiceOrder> _allOrders = []; // Все загруженные заказы
-  List<ServiceOrder> _filteredOrders = []; // Отфильтрованные
+  List<ServiceOrder> _allOrders = [];
+  List<ServiceOrder> _filteredOrders = [];
   DocumentSnapshot? _lastDocument;
   bool _loading = false;
   bool _hasMore = true;
@@ -39,10 +39,19 @@ class OrderProvider with ChangeNotifier {
           .collection('orders')
           .orderBy('createdAt', descending: true);
 
+      // Пытаемся фильтровать по городу на сервере
+      if (city != null && city.isNotEmpty) {
+        query = query.where('city', isEqualTo: city);
+      }
+      // Пытаемся фильтровать по типу на сервере
+      if (typeFilter != null && typeFilter != 'all') {
+        query = query.where('type', isEqualTo: typeFilter);
+      }
+      
       if (_lastDocument != null) {
         query = query.startAfterDocument(_lastDocument!);
       }
-      query = query.limit(20);
+      query = query.limit(50);
 
       final snapshot = await query.get();
       List<ServiceOrder> fetchedOrders = snapshot.docs
@@ -52,15 +61,44 @@ class OrderProvider with ChangeNotifier {
       if (fetchedOrders.isNotEmpty) {
         _allOrders.addAll(fetchedOrders);
         _lastDocument = snapshot.docs.last;
-        _hasMore = snapshot.docs.length == 20;
+        _hasMore = snapshot.docs.length == 50;
       } else {
         _hasMore = false;
       }
 
-      // Применяем локальные фильтры
+      // Локальная фильтрация (на всякий случай, если серверная не сработала)
       _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
     } catch (e) {
-      debugPrint('Ошибка загрузки: $e');
+      debugPrint('Ошибка загрузки с фильтрами: $e');
+      // Если ошибка из-за отсутствия индекса — загружаем без фильтров
+      try {
+        Query query = FirebaseFirestore.instance
+            .collection('orders')
+            .orderBy('createdAt', descending: true);
+
+        if (_lastDocument != null) {
+          query = query.startAfterDocument(_lastDocument!);
+        }
+        query = query.limit(50);
+
+        final snapshot = await query.get();
+        List<ServiceOrder> fetchedOrders = snapshot.docs
+            .map((doc) => ServiceOrder.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+            .toList();
+
+        if (fetchedOrders.isNotEmpty) {
+          _allOrders.addAll(fetchedOrders);
+          _lastDocument = snapshot.docs.last;
+          _hasMore = snapshot.docs.length == 50;
+        } else {
+          _hasMore = false;
+        }
+
+        // Фильтруем всё локально
+        _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
+      } catch (e2) {
+        debugPrint('Повторная ошибка: $e2');
+      }
     }
 
     _loading = false;
