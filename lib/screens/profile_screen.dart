@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import 'email_screen.dart';
 
@@ -64,6 +65,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (mounted) {
           setState(() => _isSaving = false);
         }
+      }
+    }
+  }
+
+  /// Открывает почтовый клиент для обратной связи
+  Future<void> _sendFeedback() async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'ernest779977@gmail.com',
+      queryParameters: {
+        'subject': 'ААСтройПро - Обратная связь',
+        'body': 'Здравствуйте!\n\n'
+            'Хочу сообщить:\n'
+            '\n'
+            '\n'
+            '---\n'
+            'Отправлено из приложения ААСтройПро',
+      },
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось открыть почтовый клиент')),
+        );
       }
     }
   }
@@ -180,6 +208,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: const Text('Сохранить'),
                         onPressed: _saveProfile,
                       ),
+              const SizedBox(height: 24),
+              const Divider(),
+              // Обратная связь
+              ListTile(
+                leading: const Icon(Icons.mail_outline),
+                title: const Text('Написать разработчику'),
+                subtitle: const Text('Сообщить об ошибке или предложить идею'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _sendFeedback,
+              ),
+              // Версия приложения
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Версия'),
+                subtitle: const Text('1.0.0'),
+              ),
+              const Divider(),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 icon: const Icon(Icons.logout, color: Colors.red),
