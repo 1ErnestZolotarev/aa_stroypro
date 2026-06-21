@@ -4,6 +4,7 @@ import '../providers/order_provider.dart';
 import '../widgets/order_card.dart';
 import '../widgets/city_picker.dart';
 import 'order_detail_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,22 +47,48 @@ class _HomeScreenState extends State<HomeScreen> {
         );
   }
 
+  void _resetToHome() {
+    setState(() {
+      _searchCtrl.clear();
+      _searchWord = null;
+      _selectedCity = null;
+      _typeFilter = 'all';
+    });
+    _applyFilters();
+  }
+
   @override
   Widget build(BuildContext context) {
     final orderProv = context.watch<OrderProvider>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ААСтройПро'),
+        title: GestureDetector(
+          onTap: _resetToHome,
+          child: const Text('ААСтройПро'),
+        ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.home),
+            tooltip: 'На главную',
+            onPressed: _resetToHome,
+          ),
+          IconButton(
             icon: const Icon(Icons.filter_list),
+            tooltip: 'Выбрать город',
             onPressed: () => _showFilterBottomSheet(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Профиль',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Поисковая строка
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
@@ -86,7 +113,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
-          // Переключатель типа объявлений
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: SegmentedButton<String>(
@@ -102,7 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
-          // Лента
           Expanded(
             child: orderProv.orders.isEmpty && !orderProv.loading
                 ? const Center(child: Text('Нет объявлений'))

@@ -7,6 +7,7 @@ import 'providers/order_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/create_order_screen.dart';
+import 'screens/profile_screen.dart';
 import 'widgets/adaptive_layout.dart';
 
 void main() async {
@@ -60,6 +61,7 @@ class MyApp extends StatelessWidget {
         ),
         routes: {
           '/create_order': (_) => const CreateOrderScreen(),
+          '/profile': (_) => const ProfileScreen(),
         },
       ),
     );
