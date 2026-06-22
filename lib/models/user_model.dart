@@ -5,8 +5,10 @@ class AppUser {
   final String city;
   final String role;
   final String? avatarUrl;
-  final bool isPro;        // Платный аккаунт
-  final int ordersLimit;   // Лимит объявлений (0 = безлимит)
+  final bool isPro;
+  final int ordersLimit;
+  final bool isBanned;      // Забанен ли пользователь
+  final String? bannedReason; // Причина бана
   final DateTime createdAt;
 
   AppUser({
@@ -17,7 +19,9 @@ class AppUser {
     required this.role,
     this.avatarUrl,
     this.isPro = false,
-    this.ordersLimit = 3,  // По умолчанию 3 бесплатных объявления
+    this.ordersLimit = 3,
+    this.isBanned = false,
+    this.bannedReason,
     required this.createdAt,
   });
 
@@ -30,6 +34,8 @@ class AppUser {
         'avatarUrl': avatarUrl ?? '',
         'isPro': isPro,
         'ordersLimit': ordersLimit,
+        'isBanned': isBanned,
+        'bannedReason': bannedReason ?? '',
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -42,6 +48,8 @@ class AppUser {
         avatarUrl: map['avatarUrl'] is String ? map['avatarUrl'] : null,
         isPro: map['isPro'] ?? false,
         ordersLimit: map['ordersLimit'] ?? 3,
+        isBanned: map['isBanned'] ?? false,
+        bannedReason: map['bannedReason'],
         createdAt: map['createdAt'] != null
             ? DateTime.parse(map['createdAt'])
             : DateTime.now(),

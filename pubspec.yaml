@@ -1,5 +1,5 @@
 name: aa_stroypro
-description: Бесплатная биржа отделочников
+description: Биржа отделочных работ
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -14,7 +14,6 @@ dependencies:
   firebase_auth: ^4.17.4
   cloud_firestore: ^4.15.4
   provider: ^6.1.1
-  url_launcher: ^6.2.2
 
 dev_dependencies:
   flutter_test:

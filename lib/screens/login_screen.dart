@@ -17,19 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String _role = 'customer';
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final auth = context.read<AuthProvider>();
-    if (auth.error != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: ${auth.error}')),
-        );
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     return Scaffold(
@@ -58,6 +45,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 6),
                 Text('Биржа отделочных работ', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
                 const SizedBox(height: 32),
+                // Предупреждение о бане
+                if (auth.isBanned)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.block, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Ваш аккаунт заблокирован.\n${auth.error ?? ""}',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: InputDecoration(
@@ -128,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                if (auth.error != null)
+                if (auth.error != null && !auth.isBanned)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Container(
@@ -140,18 +146,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity, height: 50,
                   child: ElevatedButton(
-                    onPressed: auth.loading ? null : () async {
+                    onPressed: auth.loading || auth.isBanned ? null : () async {
                       if (_formKey.currentState!.validate()) {
-                        await auth.registerAnonymous(_nameCtrl.text, _phoneCtrl.text, _cityCtrl.text, _role);
+                        await auth.signInWithPhone(
+                          name: _nameCtrl.text,
+                          phone: _phoneCtrl.text,
+                          city: _cityCtrl.text,
+                          role: _role,
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange, foregroundColor: Colors.white,
+                      backgroundColor: auth.isBanned ? Colors.grey : Colors.orange,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0,
                     ),
                     child: auth.loading
                         ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Войти', style: TextStyle(fontSize: 16)),
+                        : Text(auth.isBanned ? 'Заблокирован' : 'Войти', style: const TextStyle(fontSize: 16)),
                   ),
                 ),
                 const SizedBox(height: 16),

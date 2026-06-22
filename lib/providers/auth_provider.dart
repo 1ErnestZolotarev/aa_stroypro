@@ -9,73 +9,52 @@ class AuthProvider with ChangeNotifier {
   AppUser? _user;
   bool _loading = false;
   String? _error;
+  bool _isBanned = false;
 
   AppUser? get user => _user;
   bool get loading => _loading;
   String? get error => _error;
-  bool get hasEmailProvider => _auth.hasEmailProvider;
-  String? get currentEmail => _auth.currentEmail;
+  bool get isBanned => _isBanned;
 
   AuthProvider() {
     _auth.authStateChanges.listen((firebaseUser) async {
       if (firebaseUser != null) {
         _user = await _auth.getCurrentUser();
+        _isBanned = _user?.isBanned ?? false;
         _error = null;
       } else {
         _user = null;
+        _isBanned = false;
         _error = null;
       }
       notifyListeners();
     });
   }
 
-  Future<void> registerAnonymous(
-      String name, String phone, String city, String role) async {
+  Future<void> signInWithPhone({
+    required String name,
+    required String phone,
+    required String city,
+    required String role,
+  }) async {
     _loading = true;
     _error = null;
+    _isBanned = false;
     notifyListeners();
 
     try {
-      _user = await _auth.signInAnonymously(name, phone, city, role);
+      _user = await _auth.signInWithPhone(
+        name: name,
+        phone: phone,
+        city: city,
+        role: role,
+      );
+      _isBanned = _user?.isBanned ?? false;
     } catch (e) {
       _error = e.toString();
-      debugPrint('Ошибка регистрации: $e');
-    }
-
-    _loading = false;
-    notifyListeners();
-  }
-
-  /// Привязка email
-  Future<void> linkEmail(String email, String password) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      await _auth.linkEmail(email, password);
-      // Обновляем email в профиле
-      _user = await _auth.getCurrentUser();
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Ошибка привязки email: $e');
-    }
-
-    _loading = false;
-    notifyListeners();
-  }
-
-  /// Вход по email (для восстановления)
-  Future<void> signInWithEmail(String email, String password) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      _user = await _auth.signInWithEmail(email, password);
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Ошибка входа по email: $e');
+      if (e.toString().contains('заблокирован')) {
+        _isBanned = true;
+      }
     }
 
     _loading = false;
@@ -101,6 +80,10 @@ class AuthProvider with ChangeNotifier {
         city: city ?? _user!.city,
         role: role ?? _user!.role,
         avatarUrl: _user!.avatarUrl,
+        isPro: _user!.isPro,
+        ordersLimit: _user!.ordersLimit,
+        isBanned: _user!.isBanned,
+        bannedReason: _user!.bannedReason,
         createdAt: _user!.createdAt,
       );
 
@@ -109,7 +92,6 @@ class AuthProvider with ChangeNotifier {
       _error = null;
     } catch (e) {
       _error = e.toString();
-      debugPrint('Ошибка обновления профиля: $e');
     }
 
     _loading = false;
@@ -119,6 +101,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> logout() async {
     await _auth.signOut();
     _user = null;
+    _isBanned = false;
     notifyListeners();
   }
 }
