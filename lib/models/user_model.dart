@@ -5,6 +5,8 @@ class AppUser {
   final String city;
   final String role;
   final String? avatarUrl;
+  final bool isPro;        // Платный аккаунт
+  final int ordersLimit;   // Лимит объявлений (0 = безлимит)
   final DateTime createdAt;
 
   AppUser({
@@ -14,6 +16,8 @@ class AppUser {
     required this.city,
     required this.role,
     this.avatarUrl,
+    this.isPro = false,
+    this.ordersLimit = 3,  // По умолчанию 3 бесплатных объявления
     required this.createdAt,
   });
 
@@ -24,6 +28,8 @@ class AppUser {
         'city': city,
         'role': role,
         'avatarUrl': avatarUrl ?? '',
+        'isPro': isPro,
+        'ordersLimit': ordersLimit,
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -34,6 +40,8 @@ class AppUser {
         city: map['city'] ?? '',
         role: map['role'] ?? 'customer',
         avatarUrl: map['avatarUrl'] is String ? map['avatarUrl'] : null,
+        isPro: map['isPro'] ?? false,
+        ordersLimit: map['ordersLimit'] ?? 3,
         createdAt: map['createdAt'] != null
             ? DateTime.parse(map['createdAt'])
             : DateTime.now(),

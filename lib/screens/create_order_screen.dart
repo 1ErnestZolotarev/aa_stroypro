@@ -53,6 +53,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     }).join(' ');
   }
 
+  /// Проверяет, не превышен ли лимит объявлений
+  Future<bool> _checkLimit() async {
+    final user = context.read<AuthProvider>().user!;
+    
+    // PRO пользователи без лимита
+    if (user.isPro && user.ordersLimit == 0) return true;
+    
+    // Считаем текущие объявления пользователя
+    final snapshot = await FirebaseFirestore.instance
+        .collection('orders')
+        .where('authorId', isEqualTo: user.uid)
+        .get();
+    
+    return snapshot.docs.length < user.ordersLimit;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().user!;
@@ -74,6 +90,28 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // Информация о лимите
+              if (!user.isPro)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Бесплатный лимит: ${user.ordersLimit} объявлений',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               TextFormField(
                 controller: _titleCtrl,
                 decoration: const InputDecoration(labelText: 'Название работы'),
@@ -136,6 +174,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       setState(() => _isPublishing = true);
 
       try {
+        // Проверяем лимит (только для новых объявлений)
+        if (!_isEditing) {
+          final canCreate = await _checkLimit();
+          if (!canCreate) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Достигнут лимит бесплатных объявлений'),
+                  action: SnackBarAction(
+                    label: 'PRO',
+                    onPressed: () {
+                      // В будущем здесь будет экран подписки
+                    },
+                  ),
+                ),
+              );
+            }
+            return;
+          }
+        }
+
         final user = context.read<AuthProvider>().user!;
         final orderId = _isEditing ? widget.existingOrder!.id : DateTime.now().millisecondsSinceEpoch.toString();
         final fullText = '${_titleCtrl.text} ${_descCtrl.text}';
