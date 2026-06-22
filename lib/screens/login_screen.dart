@@ -5,7 +5,6 @@ import 'email_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -43,61 +42,29 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Логотип
                 Container(
-                  width: 90,
-                  height: 90,
+                  width: 90, height: 90,
                   decoration: BoxDecoration(
                     color: Colors.orange,
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.orange.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
+                      BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8)),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.construction,
-                    size: 50,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.construction, size: 50, color: Colors.white),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'ААСтройПро',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                  ),
-                ),
+                const Text('ААСтройПро', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.orange)),
                 const SizedBox(height: 6),
-                Text(
-                  'Бесплатная биржа отделочников',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade500,
-                  ),
-                ),
+                Text('Биржа отделочных работ', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
                 const SizedBox(height: 32),
-                // Поля ввода
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Ваше имя',
-                    prefixIcon: const Icon(Icons.person, color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
+                    labelText: 'Ваше имя', prefixIcon: const Icon(Icons.person, color: Colors.grey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    filled: true, fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                   validator: (v) => v!.isEmpty ? 'Введите имя' : null,
                 ),
@@ -105,18 +72,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _phoneCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Телефон',
-                    prefixIcon: const Icon(Icons.phone, color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
+                    labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    filled: true, fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                   keyboardType: TextInputType.phone,
                   validator: (v) => v!.isEmpty ? 'Введите телефон' : null,
@@ -125,23 +84,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _cityCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Город',
-                    prefixIcon: const Icon(Icons.location_city, color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
+                    labelText: 'Город', prefixIcon: const Icon(Icons.location_city, color: Colors.grey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    filled: true, fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                   validator: (v) => v!.isEmpty ? 'Введите город' : null,
                 ),
                 const SizedBox(height: 24),
-                // Выбор роли в стиле Авито
                 Row(
                   children: [
                     Expanded(
@@ -150,26 +100,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'Я заказчик',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: _role == 'customer'
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                                color: _role == 'customer'
-                                    ? Colors.orange
-                                    : Colors.grey.shade600,
-                              ),
-                            ),
+                            Text('Я заказчик', textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, fontWeight: _role == 'customer' ? FontWeight.w700 : FontWeight.w400,
+                                color: _role == 'customer' ? Colors.orange : Colors.grey.shade600)),
                             const SizedBox(height: 6),
-                            Container(
-                              height: 2,
-                              color: _role == 'customer'
-                                  ? Colors.orange
-                                  : Colors.transparent,
-                            ),
+                            Container(height: 2, color: _role == 'customer' ? Colors.orange : Colors.transparent),
                           ],
                         ),
                       ),
@@ -181,26 +116,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'Я исполнитель',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: _role == 'executor'
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                                color: _role == 'executor'
-                                    ? Colors.orange
-                                    : Colors.grey.shade600,
-                              ),
-                            ),
+                            Text('Я исполнитель', textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, fontWeight: _role == 'executor' ? FontWeight.w700 : FontWeight.w400,
+                                color: _role == 'executor' ? Colors.orange : Colors.grey.shade600)),
                             const SizedBox(height: 6),
-                            Container(
-                              height: 2,
-                              color: _role == 'executor'
-                                  ? Colors.orange
-                                  : Colors.transparent,
-                            ),
+                            Container(height: 2, color: _role == 'executor' ? Colors.orange : Colors.transparent),
                           ],
                         ),
                       ),
@@ -213,66 +133,31 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        auth.error!,
-                        style: TextStyle(color: Colors.red.shade700),
-                        textAlign: TextAlign.center,
-                      ),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                      child: Text(auth.error!, style: TextStyle(color: Colors.red.shade700), textAlign: TextAlign.center),
                     ),
                   ),
-                // Кнопка входа
                 SizedBox(
-                  width: double.infinity,
-                  height: 50,
+                  width: double.infinity, height: 50,
                   child: ElevatedButton(
-                    onPressed: auth.loading
-                        ? null
-                        : () async {
-                            if (_formKey.currentState!.validate()) {
-                              await auth.registerAnonymous(
-                                _nameCtrl.text,
-                                _phoneCtrl.text,
-                                _cityCtrl.text,
-                                _role,
-                              );
-                            }
-                          },
+                    onPressed: auth.loading ? null : () async {
+                      if (_formKey.currentState!.validate()) {
+                        await auth.registerAnonymous(_nameCtrl.text, _phoneCtrl.text, _cityCtrl.text, _role);
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
+                      backgroundColor: Colors.orange, foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0,
                     ),
                     child: auth.loading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Text('Войти', style: TextStyle(fontSize: 16)),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const EmailScreen(isLinking: false),
-                    ),
-                  ),
-                  child: Text(
-                    'Вход по Email (восстановление)',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmailScreen(isLinking: false))),
+                  child: Text('Вход по Email (восстановление)', style: TextStyle(color: Colors.grey.shade600)),
                 ),
               ],
             ),

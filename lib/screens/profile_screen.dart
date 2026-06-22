@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import 'email_screen.dart';
 
@@ -41,7 +41,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate() && !_isSaving) {
       setState(() => _isSaving = true);
-
       try {
         await context.read<AuthProvider>().updateProfile(
               name: _nameCtrl.text,
@@ -62,39 +61,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
       } finally {
-        if (mounted) {
-          setState(() => _isSaving = false);
-        }
+        if (mounted) setState(() => _isSaving = false);
       }
     }
   }
 
-  Future<void> _sendEmail() async {
-    final email = 'ernest779977@gmail.com';
-    final subject = 'ААСтройПро - Обратная связь';
-    final body = 'Здравствуйте!\n\n'
-        'Опишите проблему или предложение:\n\n\n\n'
-        '---\n'
-        'Отправлено из приложения ААСтройПро';
-    
-    final uri = Uri(
-      scheme: 'mailto',
-      path: email,
-      queryParameters: {
-        'subject': subject,
-        'body': body,
-      },
+  void _showContactDialog() {
+    const email = 'ernest779977@gmail.com';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Написать разработчику'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Скопируйте email и напишите нам:'),
+            SizedBox(height: 12),
+            SelectableText(
+              email,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(const ClipboardData(text: email));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Email скопирован!')),
+              );
+              Navigator.pop(ctx);
+            },
+            child: const Text('Скопировать'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
     );
-    
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось открыть почтовый клиент')),
-        );
-      }
-    }
   }
 
   @override
@@ -103,9 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = auth.user;
 
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('Пользователь не найден')),
-      );
+      return const Scaffold(body: Center(child: Text('Пользователь не найден')));
     }
 
     return Scaffold(
@@ -113,15 +122,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Профиль'),
         actions: [
           if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-            )
+            IconButton(icon: const Icon(Icons.edit), onPressed: () => setState(() => _isEditing = true))
           else
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => setState(() => _isEditing = false),
-            ),
+            IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _isEditing = false)),
         ],
       ),
       body: SingleChildScrollView(
@@ -149,9 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : TextButton(
                           onPressed: () => Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => const EmailScreen(isLinking: true),
-                            ),
+                            MaterialPageRoute(builder: (_) => const EmailScreen(isLinking: true)),
                           ),
                           child: const Text('Привязать'),
                         ),
@@ -160,20 +161,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Имя',
-                  prefixIcon: Icon(Icons.person),
-                ),
+                decoration: const InputDecoration(labelText: 'Имя', prefixIcon: Icon(Icons.person)),
                 enabled: _isEditing,
                 validator: (v) => v!.isEmpty ? 'Введите имя' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Телефон',
-                  prefixIcon: Icon(Icons.phone),
-                ),
+                decoration: const InputDecoration(labelText: 'Телефон', prefixIcon: Icon(Icons.phone)),
                 keyboardType: TextInputType.phone,
                 enabled: _isEditing,
                 validator: (v) => v!.isEmpty ? 'Введите телефон' : null,
@@ -181,10 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _cityCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Город',
-                  prefixIcon: Icon(Icons.location_city),
-                ),
+                decoration: const InputDecoration(labelText: 'Город', prefixIcon: Icon(Icons.location_city)),
                 enabled: _isEditing,
                 validator: (v) => v!.isEmpty ? 'Введите город' : null,
               ),
@@ -195,9 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ButtonSegment(value: 'executor', label: Text('Исполнитель')),
                 ],
                 selected: {_role},
-                onSelectionChanged: _isEditing
-                    ? (s) => setState(() => _role = s.first)
-                    : null,
+                onSelectionChanged: _isEditing ? (s) => setState(() => _role = s.first) : null,
               ),
               const SizedBox(height: 32),
               if (_isEditing)
@@ -213,9 +203,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ListTile(
                 leading: const Icon(Icons.mail_outline, color: Colors.orange),
                 title: const Text('Написать разработчику'),
-                subtitle: const Text('Откроется почтовый клиент'),
+                subtitle: const Text('Скопируйте email для связи'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: _sendEmail,
+                onTap: _showContactDialog,
               ),
               const Divider(),
               ListTile(
@@ -227,9 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.logout, color: Colors.red),
                 label: const Text('Выйти', style: TextStyle(color: Colors.red)),
-                onPressed: () async {
-                  await auth.logout();
-                },
+                onPressed: () async => await auth.logout(),
               ),
             ],
           ),
