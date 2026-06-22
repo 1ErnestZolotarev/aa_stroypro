@@ -17,9 +17,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-  } catch (e) {
-    // Если уже инициализирован - игнорируем
-  }
+  } catch (e) {}
   
   runApp(const MyApp());
 }

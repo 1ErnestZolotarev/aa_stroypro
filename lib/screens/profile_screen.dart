@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import 'email_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -80,11 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(height: 12),
             SelectableText(
               email,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.orange,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
             ),
           ],
         ),
@@ -142,23 +137,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.email),
-                  title: const Text('Email'),
-                  subtitle: Text(auth.currentEmail ?? 'Не привязан'),
-                  trailing: auth.hasEmailProvider
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : TextButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const EmailScreen(isLinking: true)),
-                          ),
-                          child: const Text('Привязать'),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 16),
               TextFormField(
                 controller: _nameCtrl,
                 decoration: const InputDecoration(labelText: 'Имя', prefixIcon: Icon(Icons.person)),
