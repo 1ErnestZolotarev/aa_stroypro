@@ -69,22 +69,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// Открывает почтовый клиент для обратной связи
-  Future<void> _sendFeedback() async {
+  Future<void> _sendEmail() async {
+    final email = 'ernest779977@gmail.com';
+    final subject = 'ААСтройПро - Обратная связь';
+    final body = 'Здравствуйте!\n\n'
+        'Опишите проблему или предложение:\n\n\n\n'
+        '---\n'
+        'Отправлено из приложения ААСтройПро';
+    
     final uri = Uri(
       scheme: 'mailto',
-      path: 'ernest779977@gmail.com',
+      path: email,
       queryParameters: {
-        'subject': 'ААСтройПро - Обратная связь',
-        'body': 'Здравствуйте!\n\n'
-            'Хочу сообщить:\n'
-            '\n'
-            '\n'
-            '---\n'
-            'Отправлено из приложения ААСтройПро',
+        'subject': subject,
+        'body': body,
       },
     );
-
+    
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
@@ -138,7 +139,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Email статус
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.email),
@@ -210,21 +210,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
               const SizedBox(height: 24),
               const Divider(),
-              // Обратная связь
               ListTile(
-                leading: const Icon(Icons.mail_outline),
+                leading: const Icon(Icons.mail_outline, color: Colors.orange),
                 title: const Text('Написать разработчику'),
-                subtitle: const Text('Сообщить об ошибке или предложить идею'),
+                subtitle: const Text('Откроется почтовый клиент'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: _sendFeedback,
+                onTap: _sendEmail,
               ),
-              // Версия приложения
+              const Divider(),
               ListTile(
                 leading: const Icon(Icons.info_outline),
                 title: const Text('Версия'),
                 subtitle: const Text('1.0.0'),
               ),
-              const Divider(),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 icon: const Icon(Icons.logout, color: Colors.red),
