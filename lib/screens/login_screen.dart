@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Text('Биржа отделочных работ', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
         const SizedBox(height: 32),
         if (a.isBanned) Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)), child: Row(children: [const Icon(Icons.block, color: Colors.red), const SizedBox(width: 8), Expanded(child: Text('Аккаунт заблокирован.\n${a.error??""}', style: const TextStyle(color: Colors.red)))])),
-        // Имя — автоформат
+        // Имя
         TextFormField(
           controller: _name,
           decoration: InputDecoration(labelText: 'Ваше имя', prefixIcon: const Icon(Icons.person, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
           },
         ),
         const SizedBox(height: 12),
-        // Город — автоформат
+        // Город
         TextFormField(
           controller: _city,
           decoration: InputDecoration(labelText: 'Город', prefixIcon: const Icon(Icons.location_city, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
@@ -66,11 +66,16 @@ class _LoginScreenState extends State<LoginScreen> {
           child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : Text(a.isBanned?'Заблокирован':'Войти', style: const TextStyle(fontSize:16)),
         )),
         const SizedBox(height: 32),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          GestureDetector(onTap: () => _openUrl('https://telegra.ph/Politika-konfidencialnosti-06-23'), child: Text('Политика конфиденциальности', style: TextStyle(fontSize:12, color:Colors.grey.shade500, decoration: TextDecoration.underline))),
-          Text(' • ', style: TextStyle(color: Colors.grey.shade400)),
-          GestureDetector(onTap: () => _openUrl('https://telegra.ph/Polzovatelskoe-soglashenie-06-23'), child: Text('Пользовательское соглашение', style: TextStyle(fontSize:12, color:Colors.grey.shade500, decoration: TextDecoration.underline))),
-        ]),
+        // Ссылки — теперь в столбик
+        GestureDetector(
+          onTap: () => _openUrl('https://telegra.ph/Politika-konfidencialnosti-06-23'),
+          child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: () => _openUrl('https://telegra.ph/Polzovatelskoe-soglashenie-06-23'),
+          child: Text('Пользовательское соглашение', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
+        ),
       ])))),
     );
   }
@@ -87,14 +92,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _openUrl(String url) async { final u = Uri.parse(url); if (await canLaunchUrl(u)) await launchUrl(u, mode: LaunchMode.externalApplication); }
 }
 
-// Форматтер: первая буква заглавная, остальные строчные (для имени и города)
 class CapitalizeFirstLetterFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     if (newValue.text.isEmpty) return newValue;
-    final text = newValue.text;
-    // Убираем множественные пробелы
-    final words = text.split(' ').where((w) => w.isNotEmpty).map((w) {
+    final words = newValue.text.split(' ').where((w) => w.isNotEmpty).map((w) {
       if (w.length == 1) return w.toUpperCase();
       return '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}';
     }).join(' ');
@@ -102,30 +104,16 @@ class CapitalizeFirstLetterFormatter extends TextInputFormatter {
   }
 }
 
-// Форматтер для телефона: +7 (XXX) XXX-XX-XX
 class PhoneInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) return const TextEditingValue(text: '');
-    
     String formatted = '+7 ';
-    if (digits.length > 1) {
-      formatted += '(${digits.substring(1, digits.length > 4 ? 4 : digits.length)}';
-    }
-    if (digits.length > 4) {
-      formatted += ') ${digits.substring(4, digits.length > 7 ? 7 : digits.length)}';
-    }
-    if (digits.length > 7) {
-      formatted += '-${digits.substring(7, digits.length > 9 ? 9 : digits.length)}';
-    }
-    if (digits.length > 9) {
-      formatted += '-${digits.substring(9, digits.length > 11 ? 11 : digits.length)}';
-    }
-    
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
+    if (digits.length > 1) formatted += '(${digits.substring(1, digits.length > 4 ? 4 : digits.length)}';
+    if (digits.length > 4) formatted += ') ${digits.substring(4, digits.length > 7 ? 7 : digits.length)}';
+    if (digits.length > 7) formatted += '-${digits.substring(7, digits.length > 9 ? 9 : digits.length)}';
+    if (digits.length > 9) formatted += '-${digits.substring(9, digits.length > 11 ? 11 : digits.length)}';
+    return TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: formatted.length));
   }
 }
