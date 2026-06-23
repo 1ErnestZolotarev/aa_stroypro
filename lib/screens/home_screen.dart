@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../providers/auth_provider.dart';
 import '../providers/order_provider.dart';
+import '../services/search_service.dart';
 import '../widgets/order_card.dart';
 import '../widgets/city_picker.dart';
 import 'order_detail_screen.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,15 +20,51 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   String? _selectedCity;
   String? _searchWord;
   String _typeFilter = 'all';
+  int _unreadChats = 0;
+  List<String> _suggestions = [];
+  bool _showSuggestions = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    Future.microtask(() => context.read<OrderProvider>().fetchOrders(initialLoad: true));
+    _searchCtrl.addListener(_onSearchChanged);
+    _searchFocus.addListener(() {
+      if (!_searchFocus.hasFocus) {
+        setState(() => _showSuggestions = false);
+      }
+    });
+    Future.microtask(() {
+      context.read<OrderProvider>().fetchOrders(initialLoad: true);
+      _listenToChats();
+    });
+  }
+
+  void _onSearchChanged() {
+    final query = _searchCtrl.text;
+    setState(() {
+      _suggestions = SearchService.getSuggestions(query);
+      _showSuggestions = query.isNotEmpty && _suggestions.isNotEmpty;
+    });
+  }
+
+  void _listenToChats() {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) return;
+
+    FirebaseFirestore.instance
+        .collection('chats')
+        .where('participants', arrayContains: user.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() => _unreadChats = snapshot.docs.length);
+      }
+    });
   }
 
   void _onScroll() {
@@ -53,13 +93,28 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchWord = null;
       _selectedCity = null;
       _typeFilter = 'all';
+      _showSuggestions = false;
     });
     _applyFilters();
+  }
+
+  void _showChatsList() {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatsListScreen(userId: user.uid),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final orderProv = context.watch<OrderProvider>();
+    final user = context.read<AuthProvider>().user;
+
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(
@@ -67,52 +122,108 @@ class _HomeScreenState extends State<HomeScreen> {
           child: const Text('ААСтройПро'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.home),
-            tooltip: 'На главную',
-            onPressed: _resetToHome,
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chat),
+                tooltip: 'Чаты',
+                onPressed: _showChatsList,
+              ),
+              if (_unreadChats > 0)
+                Positioned(
+                  right: 6, top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Text(
+                      '$_unreadChats',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            tooltip: 'Выбрать город',
-            onPressed: () => _showFilterBottomSheet(context),
-          ),
+          IconButton(icon: const Icon(Icons.home), tooltip: 'На главную', onPressed: _resetToHome),
+          IconButton(icon: const Icon(Icons.filter_list), tooltip: 'Выбрать город', onPressed: () => _showFilterBottomSheet(context)),
           IconButton(
             icon: const Icon(Icons.person),
             tooltip: 'Профиль',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            ),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
           ),
         ],
       ),
       body: Column(
         children: [
+          // Поиск с автодополнением
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Поиск по работам...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _searchWord = null;
+            child: Column(
+              children: [
+                TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocus,
+                  decoration: InputDecoration(
+                    hintText: 'Поиск по работам...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              _searchWord = null;
+                              _showSuggestions = false;
+                              _applyFilters();
+                            },
+                          )
+                        : null,
+                  ),
+                  onSubmitted: (val) {
+                    _searchWord = val.trim().isNotEmpty ? val.trim() : null;
+                    _showSuggestions = false;
+                    _applyFilters();
+                  },
+                ),
+                // Подсказки
+                if (_showSuggestions)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _suggestions.length,
+                      itemBuilder: (ctx, i) => ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.search, size: 18, color: Colors.grey),
+                        title: Text(_suggestions[i]),
+                        onTap: () {
+                          _searchCtrl.text = _suggestions[i];
+                          _searchWord = _suggestions[i];
+                          _showSuggestions = false;
                           _applyFilters();
                         },
-                      )
-                    : null,
-              ),
-              onSubmitted: (val) {
-                _searchWord = val.trim().isNotEmpty ? val.trim() : null;
-                _applyFilters();
-              },
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
+          // Фильтры
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: SegmentedButton<String>(
@@ -128,13 +239,13 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
+          // Лента
           Expanded(
             child: orderProv.orders.isEmpty && !orderProv.loading
                 ? const Center(child: Text('Нет объявлений'))
                 : ListView.builder(
                     controller: _scrollController,
-                    itemCount:
-                        orderProv.orders.length + (orderProv.hasMore ? 1 : 0),
+                    itemCount: orderProv.orders.length + (orderProv.hasMore ? 1 : 0),
                     itemBuilder: (ctx, i) {
                       if (i == orderProv.orders.length) {
                         return const Center(child: CircularProgressIndicator());
@@ -170,6 +281,55 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedCity = city;
           Navigator.pop(context);
           _applyFilters();
+        },
+      ),
+    );
+  }
+}
+
+class ChatsListScreen extends StatelessWidget {
+  final String userId;
+  const ChatsListScreen({super.key, required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Чаты')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('chats')
+            .where('participants', arrayContains: userId)
+            .orderBy('lastMessageTime', descending: true)
+            .snapshots(),
+        builder: (ctx, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('Нет чатов'));
+          }
+          final chats = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: chats.length,
+            itemBuilder: (ctx, i) {
+              final data = chats[i].data() as Map<String, dynamic>;
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.orange.shade100,
+                  child: const Icon(Icons.chat, color: Colors.orange),
+                ),
+                title: Text(data['lastMessage'] as String? ?? 'Новый чат'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(chatId: chats[i].id),
+                    ),
+                  );
+                },
+              );
+            },
+          );
         },
       ),
     );

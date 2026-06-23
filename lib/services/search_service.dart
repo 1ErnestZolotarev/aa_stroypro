@@ -1,23 +1,46 @@
 class SearchService {
-  // Стоп-слова, которые игнорируем при поиске
+  // Стоп-слова
   static final _stopWords = [
     'и', 'в', 'на', 'с', 'по', 'для', 'от', 'к', 'не', 'а', 'но', 'что', 'как', 'это', 'то',
     'я', 'мы', 'ты', 'вы', 'он', 'она', 'оно', 'они', 'мой', 'твой', 'наш', 'ваш'
   ];
 
-  // Словарь синонимов
+  // Словарь синонимов + популярные запросы
   static final Map<String, List<String>> _synonyms = {
     'отделка': ['ремонт', 'штукатурка', 'покраска', 'обои', 'малярка'],
-    'штукатурка': ['отделка', 'шпатлевка', 'шпаклевка', 'выравнивание'],
-    'шпатлевка': ['штукатурка', 'шпаклевка', 'выравнивание'],
-    'сантехника': ['трубы', 'раковина', 'унитаз', 'ванна', 'смеситель'],
-    'электрика': ['проводка', 'розетки', 'щиток', 'свет'],
-    'плитка': ['кафель', 'керамогранит', 'мозаика'],
-    'пол': ['ламинат', 'паркет', 'линолеум', 'стяжка'],
-    'потолок': ['натяжной', 'гипсокартон', 'подвесной'],
-    'дверь': ['двери', 'установка', 'входная', 'межкомнатная'],
-    'окно': ['окна', 'остекление', 'пластиковые'],
+    'штукатурка': ['отделка', 'шпатлевка', 'шпаклевка', 'выравнивание', 'штукатурка стен', 'штукатурка потолка', 'штукатурка откосов'],
+    'шпатлевка': ['штукатурка', 'шпаклевка', 'выравнивание', 'шпатлевка стен', 'шпатлевка потолка'],
+    'сантехника': ['трубы', 'раковина', 'унитаз', 'ванна', 'смеситель', 'установка сантехники', 'замена труб'],
+    'электрика': ['проводка', 'розетки', 'щиток', 'свет', 'электромонтаж', 'замена проводки'],
+    'плитка': ['кафель', 'керамогранит', 'мозаика', 'укладка плитки', 'плитка в ванной', 'плитка на пол'],
+    'пол': ['ламинат', 'паркет', 'линолеум', 'стяжка', 'укладка пола', 'выравнивание пола'],
+    'потолок': ['натяжной', 'гипсокартон', 'подвесной', 'монтаж потолка', 'потолок армстронг'],
+    'дверь': ['двери', 'установка', 'входная', 'межкомнатная', 'установка дверей'],
+    'окно': ['окна', 'остекление', 'пластиковые', 'установка окон', 'ремонт окон'],
+    'маляр': ['покраска', 'малярные работы', 'покраска стен', 'покраска потолка'],
   };
+
+  /// Возвращает подсказки для автодополнения
+  static List<String> getSuggestions(String query) {
+    if (query.isEmpty) return [];
+
+    final queryLower = query.toLowerCase().trim();
+    final suggestions = <String>{};
+
+    // Ищем совпадения в ключах и значениях словаря
+    for (var entry in _synonyms.entries) {
+      if (entry.key.toLowerCase().contains(queryLower)) {
+        suggestions.add(entry.key);
+      }
+      for (var value in entry.value) {
+        if (value.toLowerCase().contains(queryLower)) {
+          suggestions.add(value);
+        }
+      }
+    }
+
+    return suggestions.toList()..sort((a, b) => a.length.compareTo(b.length));
+  }
 
   /// Извлекает ключевые слова из текста
   static List<String> extractKeywords(String text) {
@@ -29,7 +52,6 @@ class SearchService {
         .toSet()
         .toList();
 
-    // Добавляем синонимы
     final extended = <String>{...words};
     for (var w in words) {
       if (_synonyms.containsKey(w)) {
@@ -40,7 +62,6 @@ class SearchService {
   }
 
   /// Проверяет, соответствует ли заказ поисковому запросу
-  /// Ищет по названию, описанию, ключевым словам И городу
   static bool matchesSearch(
     String title,
     String description,
@@ -53,30 +74,20 @@ class SearchService {
     final queryLower = searchQuery.toLowerCase().trim();
     final queryWords = queryLower.split(' ').where((w) => w.isNotEmpty).toList();
 
-    // Если пользователь ввёл несколько слов, ищем каждое из них
     for (var queryWord in queryWords) {
       bool found = false;
-
-      // 1. Ищем в заголовке (подстрока)
       if (title.toLowerCase().contains(queryWord)) {
         found = true;
-      }
-      // 2. Ищем в описании (подстрока)
-      else if (description.toLowerCase().contains(queryWord)) {
+      } else if (description.toLowerCase().contains(queryWord)) {
         found = true;
-      }
-      // 3. Ищем в городе (подстрока)
-      else if (city.toLowerCase().contains(queryWord)) {
+      } else if (city.toLowerCase().contains(queryWord)) {
         found = true;
-      }
-      // 4. Ищем в ключевых словах (включая синонимы)
-      else {
+      } else {
         for (var kw in keywords) {
           if (kw.toLowerCase().contains(queryWord)) {
             found = true;
             break;
           }
-          // Проверяем синонимы
           if (_synonyms.containsKey(kw)) {
             for (var syn in _synonyms[kw]!) {
               if (syn.toLowerCase().contains(queryWord)) {
@@ -88,10 +99,8 @@ class SearchService {
           if (found) break;
         }
       }
-
       if (!found) return false;
     }
-
     return true;
   }
 }

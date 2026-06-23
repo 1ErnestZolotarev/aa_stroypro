@@ -39,6 +39,7 @@ class MyApp extends StatelessWidget {
         home: Consumer<AuthProvider>(
           builder: (ctx, auth, _) {
             if (auth.user != null) {
+              // Пользователь уже вошёл — сразу в ленту
               return AdaptiveLayout(
                 mobileBody: const HomeScreen(),
                 tabletBody: const Row(
