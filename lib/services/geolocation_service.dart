@@ -1,45 +1,30 @@
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class GeolocationService {
+  /// Пытается получить город через IP (работает без Google Play Services)
   Future<String?> getCurrentCity() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return null;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return null;
+      // Используем бесплатный сервис ip-api.com (не требует ключа)
+      final response = await http.get(
+        Uri.parse('http://ip-api.com/json?fields=city&lang=ru'),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final city = data['city'] as String?;
+        if (city != null && city.isNotEmpty) {
+          return city;
         }
       }
-      if (permission == LocationPermission.deniedForever) {
-        return null;
-      }
-
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        final placemark = placemarks.first;
-        return placemark.locality ?? placemark.subAdministrativeArea ?? placemark.administrativeArea;
-      }
     } catch (e) {
-      return null;
+      // Если IP-сервис недоступен — возвращаем null
     }
     return null;
   }
 
   Future<bool> isLocationEnabled() async {
-    return await Geolocator.isLocationServiceEnabled();
+    // Всегда true — IP-геолокация не требует GPS
+    return true;
   }
 }
