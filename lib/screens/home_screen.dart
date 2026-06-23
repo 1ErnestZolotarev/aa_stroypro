@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/auth_provider.dart';
 import '../providers/order_provider.dart';
 import '../services/search_service.dart';
-import '../services/geolocation_service.dart';
 import '../widgets/order_card.dart';
 import '../widgets/city_picker.dart';
 import 'order_detail_screen.dart';
@@ -22,17 +21,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
-  final GeolocationService _geoService = GeolocationService();
   
   String? _selectedCity;
-  String? _myCity;
-  String? _geoStatus; // Отладочный статус
   String? _searchWord;
   String _typeFilter = 'all';
   int _unreadChats = 0;
   List<String> _suggestions = [];
   bool _showSuggestions = false;
-  bool _isNearby = false;
 
   @override
   void initState() {
@@ -43,35 +38,17 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!_searchFocus.hasFocus) setState(() => _showSuggestions = false);
     });
     Future.microtask(() {
-      _detectCity();
-      context.read<OrderProvider>().fetchOrders(initialLoad: true);
+      _initWithProfileCity();
       _listenToChats();
     });
   }
 
-  Future<void> _detectCity() async {
-    setState(() => _geoStatus = 'Проверяем геолокацию...');
-    
-    final isEnabled = await _geoService.isLocationEnabled();
-    if (!isEnabled) {
-      setState(() => _geoStatus = 'GPS выключен на телефоне');
-      return;
+  void _initWithProfileCity() {
+    final user = context.read<AuthProvider>().user;
+    if (user?.city != null && user!.city.isNotEmpty) {
+      _selectedCity = user.city;
     }
-    
-    setState(() => _geoStatus = 'GPS включён, определяем город...');
-    final city = await _geoService.getCurrentCity();
-    
-    if (city != null && mounted) {
-      setState(() {
-        _myCity = city;
-        _selectedCity = city;
-        _isNearby = true;
-        _geoStatus = 'Город определён: $city';
-      });
-      _applyFilters();
-    } else {
-      setState(() => _geoStatus = 'Не удалось определить город');
-    }
+    context.read<OrderProvider>().fetchOrders(city: _selectedCity, initialLoad: true);
   }
 
   void _onSearchChanged() {
@@ -115,26 +92,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _resetToHome() {
+    final user = context.read<AuthProvider>().user;
     setState(() {
       _searchCtrl.clear();
       _searchWord = null;
-      _selectedCity = _myCity;
+      _selectedCity = user?.city;
       _typeFilter = 'all';
-      _isNearby = _myCity != null;
       _showSuggestions = false;
-    });
-    _applyFilters();
-  }
-
-  void _toggleNearby() {
-    setState(() {
-      if (_isNearby) {
-        _selectedCity = null;
-        _isNearby = false;
-      } else {
-        _selectedCity = _myCity;
-        _isNearby = true;
-      }
     });
     _applyFilters();
   }
@@ -176,12 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           IconButton(icon: const Icon(Icons.home), tooltip: 'На главную', onPressed: _resetToHome),
-          IconButton(
-            icon: Icon(_isNearby ? Icons.near_me : Icons.near_me_disabled, color: _isNearby ? Colors.green : null),
-            tooltip: _isNearby ? 'Рядом: $_myCity' : 'Показать все',
-            onPressed: _toggleNearby,
-          ),
-          IconButton(icon: const Icon(Icons.filter_list), tooltip: 'Выбрать город', onPressed: () => _showFilterBottomSheet(context)),
+          IconButton(icon: const Icon(Icons.filter_list), tooltip: 'Все города', onPressed: () => _showFilterBottomSheet(context)),
           IconButton(
             icon: const Icon(Icons.person),
             tooltip: 'Профиль',
@@ -191,34 +150,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // Отладочный статус геолокации
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            color: Colors.blue.shade50,
-            child: Text(
-              _geoStatus ?? 'Инициализация...',
-              style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
-            ),
-          ),
-          // Город
-          if (_myCity != null)
+          // Мой город
+          if (user?.city != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              color: _isNearby ? Colors.green.shade50 : Colors.grey.shade100,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              color: Colors.green.shade50,
               child: Row(
                 children: [
-                  Icon(_isNearby ? Icons.location_on : Icons.location_off, size: 16, color: _isNearby ? Colors.green : Colors.grey),
+                  const Icon(Icons.location_on, size: 16, color: Colors.green),
                   const SizedBox(width: 6),
-                  Text(
-                    _isNearby ? 'Рядом: $_myCity' : 'Геолокация отключена',
-                    style: TextStyle(fontSize: 13, color: _isNearby ? Colors.green.shade700 : Colors.grey),
-                  ),
+                  Text('Мой город: ${user!.city}', style: const TextStyle(fontSize: 13, color: Colors.green)),
                   const Spacer(),
-                  if (_geoStatus != null && _geoStatus!.contains('Не удалось'))
+                  if (_selectedCity != user.city)
                     TextButton(
-                      onPressed: _detectCity,
-                      child: const Text('Повторить', style: TextStyle(fontSize: 12)),
+                      onPressed: () {
+                        setState(() => _selectedCity = user.city);
+                        _applyFilters();
+                      },
+                      child: const Text('Показать', style: TextStyle(fontSize: 12)),
                     ),
                 ],
               ),
@@ -284,7 +233,19 @@ class _HomeScreenState extends State<HomeScreen> {
           // Лента
           Expanded(
             child: orderProv.orders.isEmpty && !orderProv.loading
-                ? const Center(child: Text('Нет объявлений'))
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.inbox, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          _selectedCity != null ? 'Нет заказов в городе $_selectedCity' : 'Нет объявлений',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
                     controller: _scrollController,
                     itemCount: orderProv.orders.length + (orderProv.hasMore ? 1 : 0),
@@ -319,7 +280,6 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedCity: _selectedCity,
               onChanged: (city) {
                 _selectedCity = city;
-                _isNearby = false;
                 Navigator.pop(context);
                 _applyFilters();
               },
