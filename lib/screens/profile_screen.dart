@@ -128,12 +128,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // Силуэт человека вместо буквы
               CircleAvatar(
                 radius: 50,
                 backgroundColor: Colors.orange.shade100,
-                child: Text(
-                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                  style: const TextStyle(fontSize: 40, color: Colors.orange),
+                child: Icon(
+                  Icons.person,
+                  size: 50,
+                  color: Colors.orange.shade700,
                 ),
               ),
               const SizedBox(height: 24),
