@@ -8,20 +8,6 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  /// Поиск пользователя по номеру телефона
-  Future<AppUser?> getUserByPhone(String phone) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .where('phone', isEqualTo: phone)
-        .limit(1)
-        .get();
-    
-    if (snapshot.docs.isNotEmpty) {
-      return AppUser.fromMap(snapshot.docs.first.data());
-    }
-    return null;
-  }
-
   /// Вход/регистрация по номеру телефона
   Future<AppUser?> signInWithPhone({
     required String name,
@@ -29,8 +15,13 @@ class AuthService {
     required String city,
     required String role,
   }) async {
+    // Сначала аутентифицируемся анонимно
+    final credential = await _auth.signInAnonymously();
+    final user = credential.user;
+    if (user == null) return null;
+
     // Проверяем, существует ли пользователь с таким телефоном
-    final existingUser = await getUserByPhone(phone);
+    final existingUser = await _getUserByPhone(phone);
     
     if (existingUser != null) {
       // Проверяем, не забанен ли
@@ -40,7 +31,7 @@ class AuthService {
       
       // Обновляем данные существующего пользователя
       final updatedUser = AppUser(
-        uid: existingUser.uid,
+        uid: user.uid,
         name: name,
         phone: phone,
         city: city,
@@ -53,47 +44,38 @@ class AuthService {
         createdAt: existingUser.createdAt,
       );
       
-      await _firestore.collection('users').doc(existingUser.uid).update(updatedUser.toMap());
-      
-      // Входим анонимно (телефонная аутентификация требует Blaze)
-      // Сохраняем UID существующего пользователя
-      final credential = await _auth.signInAnonymously();
+      await _firestore.collection('users').doc(user.uid).set(updatedUser.toMap());
       return updatedUser;
     } else {
       // Создаём нового пользователя
-      final credential = await _auth.signInAnonymously();
-      final user = credential.user;
+      final appUser = AppUser(
+        uid: user.uid,
+        name: name,
+        phone: phone,
+        city: city,
+        role: role,
+        createdAt: DateTime.now(),
+      );
+      await _firestore.collection('users').doc(user.uid).set(appUser.toMap());
+      return appUser;
+    }
+  }
+
+  Future<AppUser?> _getUserByPhone(String phone) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
       
-      if (user != null) {
-        final appUser = AppUser(
-          uid: user.uid,
-          name: name,
-          phone: phone,
-          city: city,
-          role: role,
-          createdAt: DateTime.now(),
-        );
-        await _firestore.collection('users').doc(user.uid).set(appUser.toMap());
-        return appUser;
+      if (snapshot.docs.isNotEmpty) {
+        return AppUser.fromMap(snapshot.docs.first.data());
       }
+    } catch (e) {
+      debugPrint('Ошибка поиска пользователя: $e');
     }
     return null;
-  }
-
-  /// Бан пользователя (только для админа)
-  Future<void> banUser(String uid, String reason) async {
-    await _firestore.collection('users').doc(uid).update({
-      'isBanned': true,
-      'bannedReason': reason,
-    });
-  }
-
-  /// Разбан пользователя
-  Future<void> unbanUser(String uid) async {
-    await _firestore.collection('users').doc(uid).update({
-      'isBanned': false,
-      'bannedReason': '',
-    });
   }
 
   Future<void> signOut() => _auth.signOut();
@@ -101,8 +83,12 @@ class AuthService {
   Future<AppUser?> getCurrentUser() async {
     final user = _auth.currentUser;
     if (user != null) {
-      final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (doc.exists) return AppUser.fromMap(doc.data()!);
+      try {
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        if (doc.exists) return AppUser.fromMap(doc.data()!);
+      } catch (e) {
+        debugPrint('Ошибка загрузки пользователя: $e');
+      }
     }
     return null;
   }

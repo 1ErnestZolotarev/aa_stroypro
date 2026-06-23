@@ -19,9 +19,16 @@ class AuthProvider with ChangeNotifier {
   AuthProvider() {
     _auth.authStateChanges.listen((firebaseUser) async {
       if (firebaseUser != null) {
-        _user = await _auth.getCurrentUser();
-        _isBanned = _user?.isBanned ?? false;
-        _error = null;
+        try {
+          _user = await _auth.getCurrentUser();
+          _isBanned = _user?.isBanned ?? false;
+          _error = null;
+        } catch (e) {
+          // Если ошибка доступа — просто не загружаем пользователя
+          debugPrint('Ошибка загрузки пользователя: $e');
+          _user = null;
+          _error = null;
+        }
       } else {
         _user = null;
         _isBanned = false;
