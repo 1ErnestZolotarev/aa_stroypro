@@ -89,12 +89,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Мои заказы
               const Divider(),
               const Padding(padding: EdgeInsets.all(8), child: Text('Мои объявления', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: user.uid).orderBy('createdAt', descending: true).snapshots(),
+              FutureBuilder<QuerySnapshot>(
+                future: FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: user.uid).orderBy('createdAt', descending: true).get(),
                 builder: (ctx, snap) {
-                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snap.hasError) {
+                    return Text('Ошибка загрузки: ${snap.error}');
+                  }
+                  if (!snap.hasData || snap.data!.docs.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('У вас пока нет объявлений', style: TextStyle(color: Colors.grey)),
+                    );
+                  }
                   final orders = snap.data!.docs;
-                  if (orders.isEmpty) return const Text('Нет объявлений');
                   return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -103,7 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       final order = ServiceOrder.fromMap(orders[i].id, orders[i].data() as Map<String, dynamic>);
                       return Card(
                         child: ListTile(
-                          title: Text(order.title),
+                          title: Text(order.title, maxLines: 1),
                           subtitle: Text('${order.city} • ${order.budget} ₽'),
                           trailing: Chip(label: Text(order.type == 'offer' ? 'Исполнитель' : 'Заказчик')),
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order))),
