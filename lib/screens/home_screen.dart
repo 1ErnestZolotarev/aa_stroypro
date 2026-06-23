@@ -25,14 +25,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final GeolocationService _geoService = GeolocationService();
   
   String? _selectedCity;
-  String? _myCity; // Город по геолокации
+  String? _myCity;
+  String? _geoStatus; // Отладочный статус
   String? _searchWord;
   String _typeFilter = 'all';
   int _unreadChats = 0;
   List<String> _suggestions = [];
   bool _showSuggestions = false;
-  bool _isLoadingCity = false;
-  bool _isNearby = false; // Включён ли фильтр «Рядом»
+  bool _isNearby = false;
 
   @override
   void initState() {
@@ -50,17 +50,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _detectCity() async {
-    setState(() => _isLoadingCity = true);
+    setState(() => _geoStatus = 'Проверяем геолокацию...');
+    
+    final isEnabled = await _geoService.isLocationEnabled();
+    if (!isEnabled) {
+      setState(() => _geoStatus = 'GPS выключен на телефоне');
+      return;
+    }
+    
+    setState(() => _geoStatus = 'GPS включён, определяем город...');
     final city = await _geoService.getCurrentCity();
+    
     if (city != null && mounted) {
       setState(() {
         _myCity = city;
         _selectedCity = city;
         _isNearby = true;
+        _geoStatus = 'Город определён: $city';
       });
       _applyFilters();
+    } else {
+      setState(() => _geoStatus = 'Не удалось определить город');
     }
-    setState(() => _isLoadingCity = false);
   }
 
   void _onSearchChanged() {
@@ -107,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _searchCtrl.clear();
       _searchWord = null;
-      _selectedCity = _myCity; // Возвращаем к городу по геолокации
+      _selectedCity = _myCity;
       _typeFilter = 'all';
       _isNearby = _myCity != null;
       _showSuggestions = false;
@@ -167,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(icon: const Icon(Icons.home), tooltip: 'На главную', onPressed: _resetToHome),
           IconButton(
             icon: Icon(_isNearby ? Icons.near_me : Icons.near_me_disabled, color: _isNearby ? Colors.green : null),
-            tooltip: _isNearby ? 'Рядом со мной' : 'Показать все',
+            tooltip: _isNearby ? 'Рядом: $_myCity' : 'Показать все',
             onPressed: _toggleNearby,
           ),
           IconButton(icon: const Icon(Icons.filter_list), tooltip: 'Выбрать город', onPressed: () => _showFilterBottomSheet(context)),
@@ -180,19 +191,35 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // Город и геолокация
-          if (_myCity != null || _isLoadingCity)
+          // Отладочный статус геолокации
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            color: Colors.blue.shade50,
+            child: Text(
+              _geoStatus ?? 'Инициализация...',
+              style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+            ),
+          ),
+          // Город
+          if (_myCity != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               color: _isNearby ? Colors.green.shade50 : Colors.grey.shade100,
               child: Row(
                 children: [
                   Icon(_isNearby ? Icons.location_on : Icons.location_off, size: 16, color: _isNearby ? Colors.green : Colors.grey),
                   const SizedBox(width: 6),
                   Text(
-                    _isLoadingCity ? 'Определяем город...' : _isNearby ? 'Рядом: $_myCity' : 'Геолокация отключена',
+                    _isNearby ? 'Рядом: $_myCity' : 'Геолокация отключена',
                     style: TextStyle(fontSize: 13, color: _isNearby ? Colors.green.shade700 : Colors.grey),
                   ),
+                  const Spacer(),
+                  if (_geoStatus != null && _geoStatus!.contains('Не удалось'))
+                    TextButton(
+                      onPressed: _detectCity,
+                      child: const Text('Повторить', style: TextStyle(fontSize: 12)),
+                    ),
                 ],
               ),
             ),
