@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _unreadChats = 0;
   List<String> _suggestions = [];
   bool _showSuggestions = false;
+  bool _isNearby = true; // По умолчанию показываем свой город
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final u = context.read<AuthProvider>().user;
     if (u?.city != null && u!.city.isNotEmpty) {
       _selectedCity = u.city;
+      _isNearby = true;
     }
     _applyFilters();
   }
@@ -92,7 +94,24 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchWord = null;
       _selectedCity = u?.city;
       _typeFilter = 'all';
+      _isNearby = true;
       _showSuggestions = false;
+    });
+    _applyFilters();
+  }
+
+  void _toggleNearby() {
+    setState(() {
+      if (_isNearby) {
+        // Выключаем — показываем все города
+        _selectedCity = null;
+        _isNearby = false;
+      } else {
+        // Включаем — показываем свой город
+        final u = context.read<AuthProvider>().user;
+        _selectedCity = u?.city;
+        _isNearby = true;
+      }
     });
     _applyFilters();
   }
@@ -136,6 +155,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           IconButton(icon: const Icon(Icons.home), onPressed: _resetToHome),
+          // Иконка геолокации
+          IconButton(
+            icon: Icon(
+              _isNearby ? Icons.near_me : Icons.near_me_disabled,
+              color: _isNearby ? Colors.green : null,
+            ),
+            tooltip: _isNearby ? 'Рядом: ${u?.city ?? ""}' : 'Все города',
+            onPressed: _toggleNearby,
+          ),
           IconButton(
               icon: const Icon(Icons.filter_list),
               onPressed: () => _showCityPicker()),
@@ -147,30 +175,27 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // Мой город
+          // Статус геолокации
           if (u?.city != null)
             Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              color: Colors.green.shade50,
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              color: _isNearby ? Colors.green.shade50 : Colors.grey.shade100,
               child: Row(
                 children: [
-                  const Icon(Icons.location_on,
-                      size: 16, color: Colors.green),
+                  Icon(
+                    _isNearby ? Icons.location_on : Icons.location_off,
+                    size: 16,
+                    color: _isNearby ? Colors.green : Colors.grey,
+                  ),
                   const SizedBox(width: 6),
-                  Text('Мой город: ${u!.city}',
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.green)),
-                  const Spacer(),
-                  if (_selectedCity != u.city)
-                    TextButton(
-                      onPressed: () {
-                        setState(() => _selectedCity = u.city);
-                        _applyFilters(); // ← ВОТ ЭТОГО НЕ ХВАТАЛО
-                      },
-                      child: const Text('Показать',
-                          style: TextStyle(fontSize: 12)),
+                  Text(
+                    _isNearby ? 'Рядом: ${u!.city}' : 'Все города',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _isNearby ? Colors.green.shade700 : Colors.grey,
                     ),
+                  ),
                 ],
               ),
             ),
@@ -306,9 +331,12 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (_) => CityPicker(
         selectedCity: _selectedCity,
         onChanged: (city) {
-          setState(() => _selectedCity = city);
+          setState(() {
+            _selectedCity = city;
+            _isNearby = false; // Выбрали город вручную — геолокация неактивна
+          });
           Navigator.pop(context);
-          _applyFilters(); // ← ВОТ ЭТО БЫЛО И РАБОТАЛО
+          _applyFilters();
         },
       ),
     );
