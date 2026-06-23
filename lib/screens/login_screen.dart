@@ -27,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
         Text('Биржа отделочных работ', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
         const SizedBox(height: 32),
         if (a.isBanned) Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)), child: Row(children: [const Icon(Icons.block, color: Colors.red), const SizedBox(width: 8), Expanded(child: Text('Аккаунт заблокирован.\n${a.error??""}', style: const TextStyle(color: Colors.red)))])),
-        // Имя
         TextFormField(
           controller: _name,
           decoration: InputDecoration(labelText: 'Ваше имя', prefixIcon: const Icon(Icons.person, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
@@ -35,7 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
           validator: (v) => v!.isEmpty ? 'Введите имя' : null,
         ),
         const SizedBox(height: 12),
-        // Телефон с маской
         TextFormField(
           controller: _phone,
           decoration: InputDecoration(labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey), hintText: '+7 (___) ___-__-__', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
@@ -49,7 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
           },
         ),
         const SizedBox(height: 12),
-        // Город
         TextFormField(
           controller: _city,
           decoration: InputDecoration(labelText: 'Город', prefixIcon: const Icon(Icons.location_city, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
@@ -66,7 +63,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : Text(a.isBanned?'Заблокирован':'Войти', style: const TextStyle(fontSize:16)),
         )),
         const SizedBox(height: 32),
-        // Ссылки — теперь в столбик
         GestureDetector(
           onTap: () => _openUrl('https://telegra.ph/Politika-konfidencialnosti-06-23'),
           child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
