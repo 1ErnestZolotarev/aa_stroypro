@@ -84,6 +84,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Text(_isOnline ? 'онлайн' : 'был(а) недавно', style: TextStyle(fontSize: 12, color: _isOnline ? Colors.green : Colors.grey)),
         ]),
         const SizedBox(height: 8), Text('Город: ${widget.order.city}'), const SizedBox(height: 8),
+          if (widget.order.address != null && widget.order.address!.isNotEmpty) Text("Адрес: ${widget.order.address}"),
         Text('Бюджет: ${widget.order.budget} ₽', style: const TextStyle(fontWeight: FontWeight.bold)), const Divider(),
         Text(widget.order.description), const SizedBox(height: 16),
         if (!own && cu != null) Row(children: [
