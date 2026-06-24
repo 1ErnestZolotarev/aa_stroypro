@@ -15,10 +15,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _sc = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
-  String? _selectedCity, _searchWord; String _typeFilter = "all";
+  String? _selectedCity, _searchWord;
+  String _typeFilter = 'all';
   List<String> _suggestions = [];
   bool _showSuggestions = false;
   bool _isNearby = true;
+  int _unreadCount = 0;
 
   @override
   void initState() {
@@ -26,13 +28,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _sc.addListener(_onScroll);
     _searchCtrl.addListener(() { final q = _searchCtrl.text; setState(() { _suggestions = SearchService.getSuggestions(q); _showSuggestions = q.isNotEmpty && _suggestions.isNotEmpty; }); });
     _searchFocus.addListener(() { if (!_searchFocus.hasFocus) setState(() => _showSuggestions = false); });
+    Future.microtask(() { _initCity(); _listenUnread(); });
   }
 
   void _initCity() { final u = context.read<AuthProvider>().user; if (u?.city != null && u!.city.isNotEmpty) { _selectedCity = u.city; _isNearby = true; } _applyFilters(); }
+
+  void _listenUnread() {
+    final u = context.read<AuthProvider>().user;
+    if (u == null) return;
+    FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: u.uid).snapshots().listen((s) {
+      if (mounted) setState(() => _unreadCount = s.docs.length);
+    });
+  }
+
   void _onScroll() { if (_sc.position.pixels >= _sc.position.maxScrollExtent - 200) context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter); }
   void _applyFilters() { context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter, initialLoad: true); }
   void _resetToHome() { final u = context.read<AuthProvider>().user; setState(() { _searchCtrl.clear(); _searchWord = null; _selectedCity = u?.city; _typeFilter = 'all'; _isNearby = true; _showSuggestions = false; }); _applyFilters(); }
   void _toggleNearby() { setState(() { if (_isNearby) { _selectedCity = null; _isNearby = false; } else { final u = context.read<AuthProvider>().user; _selectedCity = u?.city; _isNearby = true; } }); _applyFilters(); }
+  void _openChats() { final u = context.read<AuthProvider>().user; if (u != null) Navigator.push(context, MaterialPageRoute(builder: (_) => ChatsListScreen(userId: u.uid))); }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +53,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final u = context.read<AuthProvider>().user;
     return Scaffold(
       appBar: AppBar(title: GestureDetector(onTap: _resetToHome, child: const Text('ААСтройПро')), actions: [
+        IconButton(icon: const Icon(Icons.home), onPressed: _resetToHome),
+        // Иконка геолокации
         IconButton(icon: Icon(_isNearby ? Icons.near_me : Icons.near_me_disabled, color: _isNearby ? Colors.green : null), tooltip: _isNearby ? 'Рядом: ${u?.city ?? ""}' : 'Все города', onPressed: _toggleNearby),
+        // Иконка чатов
+        Stack(children: [
+          IconButton(icon: const Icon(Icons.chat), onPressed: _openChats),
+          if (_unreadCount > 0) Positioned(right: 6, top: 6, child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)), constraints: const BoxConstraints(minWidth: 18, minHeight: 18), child: Text('$_unreadCount', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center))),
+        ]),
         IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showCityPicker()),
         IconButton(icon: const Icon(Icons.person), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))),
       ]),
@@ -64,9 +84,30 @@ class ChatsListScreen extends StatelessWidget {
   final String userId;
   const ChatsListScreen({super.key, required this.userId});
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Чаты')), body: StreamBuilder<QuerySnapshot>(stream: FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: userId).orderBy('lastMessageTime', descending: true).snapshots(), builder: (_,s) {
-    if (s.connectionState==ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-    if (!s.hasData||s.data!.docs.isEmpty) return const Center(child: Text('Нет чатов'));
-    return ListView.builder(itemCount: s.data!.docs.length, itemBuilder: (_,i) { final d = s.data!.docs[i].data() as Map<String, dynamic>; return ListTile(leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.chat, color: Colors.orange)), title: Text(d['lastMessage'] as String? ?? 'Новый чат'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: s.data!.docs[i].id)))); });
-  }));
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Чаты')),
+    body: StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: userId).orderBy('lastMessageTime', descending: true).snapshots(),
+      builder: (_, s) {
+        if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (!s.hasData || s.data!.docs.isEmpty) return const Center(child: Text('Нет чатов'));
+        final chats = s.data!.docs;
+        return ListView.builder(
+          itemCount: chats.length,
+          itemBuilder: (_, i) {
+            final d = chats[i].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.chat, color: Colors.orange)),
+              title: Text(d['lastMessage'] as String? ?? 'Новый чат'),
+              subtitle: d['lastMessageTime'] != null ? Text(_fmt(d['lastMessageTime'] as String)) : null,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: chats[i].id))),
+            );
+          },
+        );
+      },
+    ),
+  );
+
+  String _fmt(String iso) { final dt = DateTime.parse(iso); return '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}'; }
 }
