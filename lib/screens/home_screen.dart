@@ -78,7 +78,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showCityPicker() { showModalBottomSheet(context: context, builder: (_) => CityPicker(selectedCity: _selectedCity, onChanged: (city) { setState(() { _selectedCity = city; _isNearby = false; }); Navigator.pop(context); _applyFilters(); })); }
 }
 
-// Список чатов с возможностью удаления (как в Авито)
 class ChatsListScreen extends StatelessWidget {
   final String userId;
   const ChatsListScreen({super.key, required this.userId});
@@ -96,7 +95,17 @@ class ChatsListScreen extends StatelessWidget {
         if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         if (s.hasError) return Center(child: Text('Ошибка: ${s.error}'));
         if (!s.hasData || s.data!.docs.isEmpty) return const Center(child: Text('Нет чатов'));
-        final chats = s.data!.docs;
+        
+        // Сортируем на клиенте — новые сверху
+        final chats = List.from(s.data!.docs);
+        chats.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = aData['lastMessageTime'] as String? ?? '';
+          final bTime = bData['lastMessageTime'] as String? ?? '';
+          return bTime.compareTo(aTime);
+        });
+        
         return ListView.builder(
           itemCount: chats.length,
           itemBuilder: (_, i) {
