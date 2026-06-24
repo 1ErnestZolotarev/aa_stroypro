@@ -61,8 +61,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     setState(() => _loading = true);
     try {
       final id = await _createChat();
+          debugPrint("Открыт чат: $id");
       if (mounted && id.isNotEmpty) {
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: id)));
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: id))).then((_) => _findChat());
         _findChat();
       }
     } catch (e) {
