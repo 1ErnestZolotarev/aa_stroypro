@@ -19,36 +19,16 @@ class OrderProvider with ChangeNotifier {
   Future<void> fetchOrders({String? city, String? searchWord, String? typeFilter, bool initialLoad = false}) async {
     if (_loading) return; if (!_hasMore && !initialLoad) return;
     _loading = true; if (initialLoad) resetPagination(); notifyListeners();
+
     try {
       Query query = FirebaseFirestore.instance.collection('orders').orderBy('createdAt', descending: true);
-
-      // Пробуем фильтровать на сервере
-      if (city != null && city.isNotEmpty) {
-        query = query.where('city', isEqualTo: city);
-      }
-      if (typeFilter != null && typeFilter != 'all') {
-        query = query.where('type', isEqualTo: typeFilter);
-      }
-
       if (_lastDocument != null) query = query.startAfterDocument(_lastDocument!);
       query = query.limit(50);
       final snapshot = await query.get();
       List<ServiceOrder> fetched = snapshot.docs.map((d) => ServiceOrder.fromMap(d.id, d.data() as Map<String, dynamic>)).toList();
       if (fetched.isNotEmpty) { _allOrders.addAll(fetched); _lastDocument = snapshot.docs.last; _hasMore = snapshot.docs.length == 50; } else { _hasMore = false; }
       _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
-    } catch (e) {
-      debugPrint('Server filter error, using local filter: $e');
-      // Загружаем без серверных фильтров
-      try {
-        Query query = FirebaseFirestore.instance.collection('orders').orderBy('createdAt', descending: true);
-        if (_lastDocument != null) query = query.startAfterDocument(_lastDocument!);
-        query = query.limit(50);
-        final snapshot = await query.get();
-        List<ServiceOrder> fetched = snapshot.docs.map((d) => ServiceOrder.fromMap(d.id, d.data() as Map<String, dynamic>)).toList();
-        if (fetched.isNotEmpty) { _allOrders.addAll(fetched); _lastDocument = snapshot.docs.last; _hasMore = snapshot.docs.length == 50; } else { _hasMore = false; }
-        _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
-      } catch (e2) { debugPrint('Fallback error: $e2'); }
-    }
+    } catch (e) { debugPrint('Ошибка загрузки заказов: $e'); }
     _loading = false; notifyListeners();
   }
 
