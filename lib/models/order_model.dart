@@ -7,6 +7,7 @@ class ServiceOrder {
   final String description;
   final int budget;
   final String city;
+  final String? address; // Адрес объекта
   final String type; // 'offer' или 'request'
   final List<String> keywords;
   final DateTime createdAt;
@@ -20,6 +21,7 @@ class ServiceOrder {
     required this.description,
     required this.budget,
     required this.city,
+    this.address,
     required this.type,
     required this.keywords,
     required this.createdAt,
@@ -34,6 +36,7 @@ class ServiceOrder {
         'description': description,
         'budget': budget,
         'city': city,
+    'address': address ?? '',
         'type': type,
         'keywords': keywords,
         'createdAt': createdAt.toIso8601String(),

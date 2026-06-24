@@ -16,9 +16,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   @override
   void initState() { super.initState(); final o = widget.existingOrder; _title = TextEditingController(text: o?.title??''); _desc = TextEditingController(text: o?.description??''); _budget = TextEditingController(text: o?.budget.toString()??''); _city = TextEditingController(text: o?.city??''); _type = o?.type??'request'; }
+    _addr = TextEditingController(text: o?.address ?? "");
 
   @override
   void dispose() { _title.dispose(); _desc.dispose(); _budget.dispose(); _city.dispose(); super.dispose(); }
+    _addr.dispose();
 
   String _norm(String s) => s.trim().split(' ').map((w) => w.isEmpty?'':'${w[0].toUpperCase()}${w.substring(1).toLowerCase()}').join(' ');
 
@@ -35,6 +37,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         _tf(_desc, 'Описание', lines: 3), const SizedBox(height:8),
         _tf(_budget, 'Бюджет (₽)', num: true), const SizedBox(height:8),
         _tf(_city, 'Город'), const SizedBox(height:16),
+        _tf(_addr, "Адрес объекта"), const SizedBox(height:8),
         TextFormField(initialValue: u.phone, decoration: const InputDecoration(labelText: 'Контактный телефон', prefixIcon: Icon(Icons.phone)), enabled: false),
         const SizedBox(height:16),
         SegmentedButton<String>(segments: const [ButtonSegment(value:'request',label:Text('Ищу исполнителя')),ButtonSegment(value:'offer',label:Text('Предлагаю услуги'))], selected: {_type}, onSelectionChanged: _publishing?null:(s) => setState(() => _type = s.first)),
@@ -72,6 +75,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         }
         
         final o = ServiceOrder(id: _editing?widget.existingOrder!.id:DateTime.now().millisecondsSinceEpoch.toString(), authorId: _editing?widget.existingOrder!.authorId:u.uid, authorName: _editing?widget.existingOrder!.authorName:u.name, authorPhone: u.phone, title: _title.text, description: _desc.text, budget: int.tryParse(_budget.text)??0, city: _norm(_city.text), type: _type, keywords: SearchService.extractKeywords('${_title.text} ${_desc.text}'), createdAt: _editing?widget.existingOrder!.createdAt:DateTime.now());
+          address: _addr.text,
         if (_editing) { await FirestoreService().updateOrder(o); } else { await FirestoreService().addOrder(o); }
         if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_editing?'Обновлено!':'Опубликовано!'))); Navigator.pop(context); }
       } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e'))); }
