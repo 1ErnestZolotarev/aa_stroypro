@@ -2,56 +2,30 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart' as OurAuth;
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
-  final _f = GlobalKey<FormState>();
-  final _name = TextEditingController(), _phone = TextEditingController(), _city = TextEditingController(), _password = TextEditingController();
-  String _role = 'customer';
+class _LoginScreenState extends State<LoginScreen> {
+  final _phone = TextEditingController();
+  final _password = TextEditingController();
   bool _needsPassword = false;
   String? _existingEmail;
   bool _checkingPhone = false;
   Timer? _debounceTimer;
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        _phone.clear();
-        _name.clear();
-        _city.clear();
-        _password.clear();
-        setState(() {
-          _needsPassword = false;
-          _existingEmail = null;
-          _checkingPhone = false;
-          _role = 'customer';
-        });
-        _debounceTimer?.cancel();
-      }
-    });
-  }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _name.dispose();
     _phone.dispose();
-    _city.dispose();
     _password.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -78,27 +52,15 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     });
   }
 
-  Future<void> _submitLogin() async {
-    final auth = context.read<OurAuth.AuthProvider>();
+  Future<void> _submit() async {
     if (_needsPassword) {
       if (_password.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
         return;
       }
-      await auth.signInWithEmail(_existingEmail!, _password.text);
+      await context.read<OurAuth.AuthProvider>().signInWithEmail(_existingEmail!, _password.text);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Номер не зарегистрирован. Перейдите на вкладку Регистрация.')));
-    }
-  }
-
-  Future<void> _submitRegister() async {
-    if (_f.currentState!.validate()) {
-      final auth = context.read<OurAuth.AuthProvider>();
-      if (_needsPassword) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Этот номер уже зарегистрирован. Перейдите на вкладку Вход.')));
-        return;
-      }
-      await auth.signInWithPhone(name: _name.text, phone: _phone.text, city: _city.text, role: _role);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Номер не зарегистрирован. Перейдите к регистрации.')));
     }
   }
 
@@ -112,130 +74,47 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     }
   }
 
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uri);
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось открыть ссылку')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final a = context.watch<OurAuth.AuthProvider>();
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(32), child: Form(key: _f, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 90,height: 90, decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 20, offset: const Offset(0,8))]), child: const Icon(Icons.construction, size: 50, color: Colors.white)),
-        const SizedBox(height: 20),
-        const Text('ААСтройПро', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.orange)),
-        Text('Биржа отделочных работ', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-        const SizedBox(height: 24),
-        Container(
-          decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(12)),
-          child: TabBar(
-            controller: _tabController,
-            indicator: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(12)),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.black54,
-            tabs: const [
-              Tab(text: 'Вход'),
-              Tab(text: 'Регистрация'),
+      appBar: AppBar(title: const Text('Вход')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            TextFormField(
+              controller: _phone,
+              decoration: const InputDecoration(labelText: 'Телефон', prefixIcon: Icon(Icons.phone)),
+              keyboardType: TextInputType.phone,
+              inputFormatters: [PhoneInputFormatter()],
+              onChanged: (_) => _checkPhone(),
+            ),
+            if (_checkingPhone) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
+            if (_needsPassword && !_checkingPhone) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Пароль', prefixIcon: Icon(Icons.lock)),
+              ),
+              const SizedBox(height: 8),
+              TextButton(onPressed: _forgotPassword, child: const Text('Забыли пароль?')),
             ],
-          ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: (a.loading || _checkingPhone) ? null : _submit,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                child: a.loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Войти', style: TextStyle(fontSize: 16)),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-        SizedBox(
-          height: 400,
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              Column(children: [
-                TextFormField(
-                  controller: _phone,
-                  decoration: InputDecoration(labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey), hintText: '+7 (___) ___-__-__', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [PhoneInputFormatter()],
-                  onChanged: (_) => _checkPhone(),
-                ),
-                if (_checkingPhone) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
-                if (_needsPassword && !_checkingPhone) ...[
-                  const SizedBox(height: 12),
-                  Text('Введите пароль для входа', style: TextStyle(color: Colors.grey.shade600)),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _password, obscureText: true, decoration: InputDecoration(labelText: 'Пароль', prefixIcon: const Icon(Icons.lock, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white)),
-                  const SizedBox(height: 8),
-                  TextButton(onPressed: _forgotPassword, child: const Text('Забыли пароль?')),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
-                  onPressed: (a.loading || _checkingPhone) ? null : _submitLogin,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-                  child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : const Text('Войти', style: TextStyle(fontSize:16)),
-                )),
-              ]),
-              Column(children: [
-                TextFormField(
-                  controller: _phone,
-                  decoration: InputDecoration(labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey), hintText: '+7 (___) ___-__-__', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [PhoneInputFormatter()],
-                  onChanged: (_) => _checkPhone(),
-                ),
-                if (_checkingPhone) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
-                if (!_needsPassword && !_checkingPhone) ...[
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _name, decoration: InputDecoration(labelText: 'Ваше имя', prefixIcon: const Icon(Icons.person, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите имя' : null),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _city, decoration: InputDecoration(labelText: 'Город', prefixIcon: const Icon(Icons.location_city, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите город' : null),
-                  const SizedBox(height: 24),
-                  Row(children: [Expanded(child: _roleBtn('Я заказчик','customer')), const SizedBox(width: 24), Expanded(child: _roleBtn('Я исполнитель','executor'))]),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
-                  onPressed: (a.loading || _checkingPhone) ? null : _submitRegister,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-                  child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : const Text('Зарегистрироваться', style: TextStyle(fontSize:16)),
-                )),
-              ]),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-        GestureDetector(
-          onTap: () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/preview'),
-          child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
-        ),
-        const SizedBox(height: 6),
-        GestureDetector(
-          onTap: () => _openUrl('https://docs.google.com/document/d/1Xiiy-_FHSjNv-qcDvibxkA_wFEkTP7mOr4dqOFzZ1DY/preview'),
-          child: Text('Пользовательское соглашение', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
-        ),
-      ])))),
+      ),
     );
-  }
-
-  Widget _roleBtn(String text, String role) => GestureDetector(
-    onTap: () => setState(() => _role = role),
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Text(text, textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: _role==role?FontWeight.w700:FontWeight.w400, color: _role==role?Colors.orange:Colors.grey.shade600)),
-      const SizedBox(height: 6),
-      Container(height: 2, color: _role==role?Colors.orange:Colors.transparent),
-    ]),
-  );
-}
-
-class CapitalizeFirstLetterFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue old, TextEditingValue now) {
-    if (now.text.isEmpty) return now;
-    final words = now.text.split(' ').where((w) => w.isNotEmpty).map((w) => w.length==1 ? w.toUpperCase() : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}').join(' ');
-    return TextEditingValue(text: words, selection: TextSelection.collapsed(offset: words.length));
   }
 }
 
