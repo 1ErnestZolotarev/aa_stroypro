@@ -6,7 +6,6 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Проверяет, существует ли пользователь с таким номером и привязан ли email
   Future<Map<String, dynamic>> checkPhone(String phone) async {
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     final doc = await _firestore.collection('users').doc(docId).get();
@@ -21,7 +20,6 @@ class AuthService {
     return {'exists': false, 'needsPassword': false};
   }
 
-  /// Вход по номеру (без пароля) – только если email не привязан
   Future<AppUser?> signInWithPhone({
     required String name,
     required String phone,
@@ -33,12 +31,11 @@ class AuthService {
     final userRef = _firestore.collection('users').doc(docId);
     final existing = await userRef.get();
     if (existing.exists) {
-      await userRef.update({
-        'name': name,
-        'city': city,
-        'role': role,
-      });
+      // Пользователь уже существует – НЕ обновляем имя/город/роль
+      // Просто возвращаем его данные
+      return AppUser.fromMap(existing.data()!);
     } else {
+      // Новый пользователь – создаём
       final newUser = AppUser(
         phone: phone,
         name: name,
@@ -47,19 +44,17 @@ class AuthService {
         createdAt: DateTime.now(),
       );
       await userRef.set(newUser.toMap());
+      return newUser;
     }
-    final doc = await userRef.get();
-    return AppUser.fromMap(doc.data()!);
   }
 
-  /// Вход по email и паролю (для пользователей с привязанным email)
   Future<AppUser?> signInWithEmail(String email, String password) async {
     final credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
-    // Ищем пользователя по email
-    final snapshot = await _firestore.collection('users')
+    final snapshot = await _firestore
+        .collection('users')
         .where('email', isEqualTo: email)
         .limit(1)
         .get();
@@ -69,25 +64,38 @@ class AuthService {
     return null;
   }
 
-  /// Привязка email к существующему аккаунту (по номеру телефона)
-  Future<void> linkEmail(String phone, String email, String password) async {
-    // Создаём email-аккаунт
+  Future<String> linkEmail(String phone, String email, String password) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) throw Exception('Пользователь не авторизован');
+
     final credential = EmailAuthProvider.credential(
       email: email,
       password: password,
     );
-    // Привязываем к текущему анонимному аккаунту
-    await _auth.currentUser!.linkWithCredential(credential);
-    // Отправляем письмо для подтверждения
-    await _auth.currentUser!.sendEmailVerification();
-    // Сохраняем email в профиле
+
+    try {
+      await currentUser.linkWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        throw Exception('Этот email уже используется другим аккаунтом');
+      } else if (e.code == 'invalid-email') {
+        throw Exception('Некорректный email');
+      } else if (e.code == 'weak-password') {
+        throw Exception('Пароль слишком простой (минимум 6 символов)');
+      }
+      throw Exception('Ошибка: ${e.message}');
+    }
+
+    await currentUser.sendEmailVerification();
+
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     await _firestore.collection('users').doc(docId).update({
       'email': email,
     });
+
+    return 'Письмо для подтверждения отправлено на $email. Проверьте папку "Спам", если письма нет.';
   }
 
-  /// Проверяет, подтверждён ли email у текущего пользователя
   bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
 
   Future<void> signOut() => _auth.signOut();
