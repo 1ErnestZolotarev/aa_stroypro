@@ -1,0 +1,9 @@
+workflows:
+  release-build:
+    name: Release Build
+    environment:
+      flutter: stable
+    scripts:
+      - flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
