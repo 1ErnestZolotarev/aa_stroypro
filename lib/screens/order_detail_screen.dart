@@ -38,22 +38,41 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _findChat() async {
     final u = context.read<AuthProvider>().user;
     if (u == null) return;
-    final s = await FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: u.uid).get();
+    final s = await FirebaseFirestore.instance.collection('chats')
+        .where('participants', arrayContains: u.uid)
+        .get();
     for (var d in s.docs) {
-      if ((d.data()['orderId'] as String?) == widget.order.id && List<String>.from(d.data()['participants']).contains(widget.order.authorId)) {
-        setState(() => _chatId = d.id); return;
+      final participants = List<String>.from(d.data()['participants'] ?? []);
+      if (participants.contains(widget.order.authorId) && 
+          participants.contains(u.uid)) {
+        setState(() => _chatId = d.id);
+        return;
       }
     }
   }
 
   Future<String> _createChat() async {
     final u = context.read<AuthProvider>().user!;
-    final s = await FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: u.uid).get();
+    // Ищем существующий чат между этими двумя пользователями
+    final s = await FirebaseFirestore.instance.collection('chats')
+        .where('participants', arrayContains: u.uid)
+        .get();
     for (var d in s.docs) {
-      if ((d.data()['orderId'] as String?) == widget.order.id && List<String>.from(d.data()['participants']).contains(widget.order.authorId)) return d.id;
+      final participants = List<String>.from(d.data()['participants'] ?? []);
+      if (participants.contains(widget.order.authorId) && 
+          participants.contains(u.uid)) {
+        return d.id;
+      }
     }
+    // Создаём новый чат с начальным сообщением
     final ref = FirebaseFirestore.instance.collection('chats').doc();
-    await ref.set({'participants': [u.uid, widget.order.authorId], 'orderId': widget.order.id, 'lastMessage': '', 'lastMessageTime': DateTime.now().toIso8601String(), 'createdAt': DateTime.now().toIso8601String()});
+    await ref.set({
+      'participants': [u.uid, widget.order.authorId],
+      'orderId': widget.order.id,
+      'lastMessage': 'Чат создан',
+      'lastMessageTime': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toIso8601String(),
+    });
     return ref.id;
   }
 
@@ -84,7 +103,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Text(_isOnline ? 'онлайн' : 'был(а) недавно', style: TextStyle(fontSize: 12, color: _isOnline ? Colors.green : Colors.grey)),
         ]),
         const SizedBox(height: 8), Text('Город: ${widget.order.city}'), const SizedBox(height: 8),
-          if (widget.order.address != null && widget.order.address!.isNotEmpty) Text("Адрес: ${widget.order.address}"),
+        if (widget.order.address != null && widget.order.address!.isNotEmpty) Text('Адрес: ${widget.order.address}'),
+        const SizedBox(height: 8),
         Text('Бюджет: ${widget.order.budget} ₽', style: const TextStyle(fontWeight: FontWeight.bold)), const Divider(),
         Text(widget.order.description), const SizedBox(height: 16),
         if (!own && cu != null) Row(children: [
