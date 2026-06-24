@@ -18,7 +18,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _needsPassword = false;
   String? _existingEmail;
 
-  // Сначала проверяем номер
   Future<void> _checkPhone() async {
     final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (phone.length < 11) return;
@@ -37,7 +36,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final auth = context.read<AuthProvider>();
       final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
       if (_needsPassword) {
-        // Вход по email
         await auth.signInWithEmail(_existingEmail!, _password.text);
       } else {
         await auth.signInWithPhone(
@@ -62,7 +60,6 @@ class _LoginScreenState extends State<LoginScreen> {
         Text('Биржа отделочных работ', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
         const SizedBox(height: 32),
         if (a.error != null) Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)), child: Text(a.error!, style: TextStyle(color: Colors.red.shade700), textAlign: TextAlign.center)),
-        // Номер телефона
         TextFormField(
           controller: _phone,
           decoration: InputDecoration(labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey), hintText: '+7 (___) ___-__-__', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white),
@@ -91,9 +88,16 @@ class _LoginScreenState extends State<LoginScreen> {
           child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : const Text('Войти', style: TextStyle(fontSize:16)),
         )),
         const SizedBox(height: 32),
-        GestureDetector(onTap: () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/preview'), child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline))),
+        // Ссылки на документы
+        GestureDetector(
+          onTap: () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/preview'),
+          child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
+        ),
         const SizedBox(height: 6),
-        GestureDetector(onTap: () => _openUrl('https://docs.google.com/document/d/1Xiiy-_FHSjNv-qcDvibxkA_wFEkTP7mOr4dqOFzZ1DY/preview'), child: Text('Пользовательское соглашение', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline))),
+        GestureDetector(
+          onTap: () => _openUrl('https://docs.google.com/document/d/1Xiiy-_FHSjNv-qcDvibxkA_wFEkTP7mOr4dqOFzZ1DY/preview'),
+          child: Text('Пользовательское соглашение', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
+        ),
       ])))),
     );
   }
