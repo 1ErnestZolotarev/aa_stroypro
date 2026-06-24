@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
     ]),
   );
 
-  Future<void> _openUrl(String url) async { final u = Uri.parse(url); if (await canLaunchUrl(u)) await launchUrl(u, mode: LaunchMode.externalApplication); }
+  Future<void> _openUrl(String url) async { final u = Uri.parse(url); if (await canLaunchUrl(u)) await launchUrl(u, mode: LaunchMode.externalApplication, webOnlyWindowName: "_blank"); }
 }
 
 class CapitalizeFirstLetterFormatter extends TextInputFormatter {
