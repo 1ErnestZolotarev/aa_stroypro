@@ -62,15 +62,27 @@ class _LoginScreenState extends State<LoginScreen> {
           style: ElevatedButton.styleFrom(backgroundColor: a.isBanned ? Colors.grey : Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
           child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : Text(a.isBanned?'Заблокирован':'Войти', style: const TextStyle(fontSize:16)),
         )),
-        const SizedBox(height: 32),
-        GestureDetector(
-          onTap: () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/preview'),
-          child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
-        ),
-        const SizedBox(height: 6),
-        GestureDetector(
-          onTap: () => _openUrl('https://docs.google.com/document/d/1Xiiy-_FHSjNv-qcDvibxkA_wFEkTP7mOr4dqOFzZ1DY/preview'),
-          child: Text('Пользовательское соглашение', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
+        const SizedBox(height: 24),
+        // Как в Авито: текст + кликабельные ссылки
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500, height: 1.4),
+            children: [
+              const TextSpan(text: 'Нажимая «Войти», вы принимаете\n'),
+              TextSpan(
+                text: 'Пользовательское соглашение',
+                style: TextStyle(color: Colors.blue.shade600, decoration: TextDecoration.underline),
+                recognizer: TapGestureRecognizer()..onTap = () => _openUrl('https://docs.google.com/document/d/1Xiiy-_FHSjNv-qcDvibxkA_wFEkTP7mOr4dqOFzZ1DY/preview'),
+              ),
+              const TextSpan(text: ' и '),
+              TextSpan(
+                text: 'Политику конфиденциальности',
+                style: TextStyle(color: Colors.blue.shade600, decoration: TextDecoration.underline),
+                recognizer: TapGestureRecognizer()..onTap = () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/preview'),
+              ),
+            ],
+          ),
         ),
       ])))),
     );
@@ -85,7 +97,18 @@ class _LoginScreenState extends State<LoginScreen> {
     ]),
   );
 
-  Future<void> _openUrl(String url) async { final u = Uri.parse(url); if (await canLaunchUrl(u)) await launchUrl(u, mode: LaunchMode.externalApplication, webOnlyWindowName: "_blank"); }
+  Future<void> _openUrl(String url) async {
+    final u = Uri.parse(url);
+    try {
+      await launchUrl(u, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось открыть ссылку')),
+        );
+      }
+    }
+  }
 }
 
 class CapitalizeFirstLetterFormatter extends TextInputFormatter {
