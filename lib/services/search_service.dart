@@ -1,106 +1,30 @@
 class SearchService {
-  // Стоп-слова
-  static final _stopWords = [
-    'и', 'в', 'на', 'с', 'по', 'для', 'от', 'к', 'не', 'а', 'но', 'что', 'как', 'это', 'то',
-    'я', 'мы', 'ты', 'вы', 'он', 'она', 'оно', 'они', 'мой', 'твой', 'наш', 'ваш'
-  ];
+static final _sw=['и','в','на','с','по','для','от','к','не','а','но','что','как','это','то','я','мы','ты','вы','он','она','оно','они','мой','твой','наш','ваш'];
+static final Map<String,List<String>> _syn={'отделка':['ремонт','штукатурка','покраска','обои','малярка'],'штукатурка':['отделка','шпатлевка','шпаклевка','выравнивание','штукатурка стен','штукатурка потолка','штукатурка откосов'],'шпатлевка':['штукатурка','шпаклевка','выравнивание','шпатлевка стен','шпатлевка потолка'],'сантехника':['трубы','раковина','унитаз','ванна','смеситель','установка сантехники','замена труб'],'электрика':['проводка','розетки','щиток','свет','электромонтаж','замена проводки'],'плитка':['кафель','керамогранит','мозаика','укладка плитки','плитка в ванной','плитка на пол'],'пол':['ламинат','паркет','линолеум','стяжка','укладка пола','выравнивание пола'],'потолок':['натяжной','гипсокартон','подвесной','монтаж потолка'],'дверь':['двери','установка','входная','межкомнатная','установка дверей'],'окно':['окна','остекление','пластиковые','установка окон']};
 
-  // Словарь синонимов + популярные запросы
-  static final Map<String, List<String>> _synonyms = {
-    'отделка': ['ремонт', 'штукатурка', 'покраска', 'обои', 'малярка'],
-    'штукатурка': ['отделка', 'шпатлевка', 'шпаклевка', 'выравнивание', 'штукатурка стен', 'штукатурка потолка', 'штукатурка откосов'],
-    'шпатлевка': ['штукатурка', 'шпаклевка', 'выравнивание', 'шпатлевка стен', 'шпатлевка потолка'],
-    'сантехника': ['трубы', 'раковина', 'унитаз', 'ванна', 'смеситель', 'установка сантехники', 'замена труб'],
-    'электрика': ['проводка', 'розетки', 'щиток', 'свет', 'электромонтаж', 'замена проводки'],
-    'плитка': ['кафель', 'керамогранит', 'мозаика', 'укладка плитки', 'плитка в ванной', 'плитка на пол'],
-    'пол': ['ламинат', 'паркет', 'линолеум', 'стяжка', 'укладка пола', 'выравнивание пола'],
-    'потолок': ['натяжной', 'гипсокартон', 'подвесной', 'монтаж потолка', 'потолок армстронг'],
-    'дверь': ['двери', 'установка', 'входная', 'межкомнатная', 'установка дверей'],
-    'окно': ['окна', 'остекление', 'пластиковые', 'установка окон', 'ремонт окон'],
-    'маляр': ['покраска', 'малярные работы', 'покраска стен', 'покраска потолка'],
-  };
+// Города и области
+static final Map<String,List<String>> _cities = {
+  'Калининград': ['Калининградская область', 'Калининград', 'Светлогорск', 'Зеленоградск', 'Черняховск', 'Советск', 'Гусев', 'Балтийск', 'Гвардейск', 'Пионерский', 'Мамоново', 'Ладушкин', 'Багратионовск', 'Полесск', 'Правдинск', 'Озёрск', 'Нестеров', 'Краснознаменск', 'Славск', 'Неман', 'Янтарный', 'Приморск', 'Донское', 'Знаменск', 'Железнодорожный', 'Большаково', 'Храброво', 'Васильково', 'Малиновка', 'Талпаки'],
+  'Москва': ['Москва', 'Московская область', 'Химки', 'Мытищи', 'Королёв', 'Люберцы', 'Балашиха', 'Красногорск', 'Одинцово', 'Домодедово', 'Подольск', 'Реутов', 'Долгопрудный', 'Зеленоград', 'Троицк', 'Щербинка'],
+  'Санкт-Петербург': ['Санкт-Петербург', 'Ленинградская область', 'Гатчина', 'Выборг', 'Пушкин', 'Колпино', 'Петергоф', 'Всеволожск', 'Кингисепп', 'Сосновый Бор', 'Тихвин', 'Кириши', 'Волхов'],
+};
 
-  /// Возвращает подсказки для автодополнения
-  static List<String> getSuggestions(String query) {
-    if (query.isEmpty) return [];
+static List<String> getSuggestions(String q) { if(q.isEmpty) return []; final ql=q.toLowerCase().trim(); final s=<String>{}; for(var e in _syn.entries) { if(e.key.toLowerCase().contains(ql)) s.add(e.key); for(var v in e.value) { if(v.toLowerCase().contains(ql)) s.add(v); }} return s.toList()..sort((a,b)=>a.length.compareTo(b.length)); }
 
-    final queryLower = query.toLowerCase().trim();
-    final suggestions = <String>{};
+static List<String> extractKeywords(String t) { final w=t.toLowerCase().replaceAll(RegExp(r'[^\w\sа-яё]'),'').split(' ').where((w)=>w.length>2&&!_sw.contains(w)).toSet().toList(); final ex=<String>{...w}; for(var v in w) { if(_syn.containsKey(v)) ex.addAll(_syn[v]!); } return ex.toList(); }
 
-    // Ищем совпадения в ключах и значениях словаря
-    for (var entry in _synonyms.entries) {
-      if (entry.key.toLowerCase().contains(queryLower)) {
-        suggestions.add(entry.key);
-      }
-      for (var value in entry.value) {
-        if (value.toLowerCase().contains(queryLower)) {
-          suggestions.add(value);
-        }
-      }
-    }
+static bool matchesSearch(String ti, String de, List<String> kw, String ci, String q) { if(q.isEmpty) return true; final ql=q.toLowerCase().trim(); final qw=ql.split(' ').where((w)=>w.isNotEmpty).toList(); for(var w in qw) { bool f=false; if(ti.toLowerCase().contains(w)) f=true; else if(de.toLowerCase().contains(w)) f=true; else if(_cityMatches(ci, w)) f=true; else { for(var k in kw) { if(k.toLowerCase().contains(w)) { f=true; break; } if(_syn.containsKey(k)) { for(var s in _syn[k]!) { if(s.toLowerCase().contains(w)) { f=true; break; } } } if(f) break; } } if(!f) return false; } return true; }
 
-    return suggestions.toList()..sort((a, b) => a.length.compareTo(b.length));
+static bool _cityMatches(String city, String query) {
+  final cl = city.toLowerCase();
+  final ql = query.toLowerCase();
+  if (cl.contains(ql)) return true;
+  for (var entry in _cities.entries) {
+    final key = entry.key.toLowerCase();
+    final values = entry.value.map((v) => v.toLowerCase()).toList();
+    if (ql.contains(key) || key.contains(ql)) { if (values.contains(cl) || cl.contains(key)) return true; }
+    if (values.contains(cl)) { if (ql.contains(key) || key.contains(ql)) return true; for (var v in values) { if (v.contains(ql) || ql.contains(v)) return true; } }
   }
-
-  /// Извлекает ключевые слова из текста
-  static List<String> extractKeywords(String text) {
-    final words = text
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^\w\sа-яё]'), '')
-        .split(' ')
-        .where((w) => w.length > 2 && !_stopWords.contains(w))
-        .toSet()
-        .toList();
-
-    final extended = <String>{...words};
-    for (var w in words) {
-      if (_synonyms.containsKey(w)) {
-        extended.addAll(_synonyms[w]!);
-      }
-    }
-    return extended.toList();
-  }
-
-  /// Проверяет, соответствует ли заказ поисковому запросу
-  static bool matchesSearch(
-    String title,
-    String description,
-    List<String> keywords,
-    String city,
-    String searchQuery,
-  ) {
-    if (searchQuery.isEmpty) return true;
-
-    final queryLower = searchQuery.toLowerCase().trim();
-    final queryWords = queryLower.split(' ').where((w) => w.isNotEmpty).toList();
-
-    for (var queryWord in queryWords) {
-      bool found = false;
-      if (title.toLowerCase().contains(queryWord)) {
-        found = true;
-      } else if (description.toLowerCase().contains(queryWord)) {
-        found = true;
-      } else if (city.toLowerCase().contains(queryWord)) {
-        found = true;
-      } else {
-        for (var kw in keywords) {
-          if (kw.toLowerCase().contains(queryWord)) {
-            found = true;
-            break;
-          }
-          if (_synonyms.containsKey(kw)) {
-            for (var syn in _synonyms[kw]!) {
-              if (syn.toLowerCase().contains(queryWord)) {
-                found = true;
-                break;
-              }
-            }
-          }
-          if (found) break;
-        }
-      }
-      if (!found) return false;
-    }
-    return true;
-  }
+  return false;
+}
 }
