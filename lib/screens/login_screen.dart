@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
   final _f = GlobalKey<FormState>();
   final _name = TextEditingController(), _phone = TextEditingController(), _city = TextEditingController(), _password = TextEditingController();
   String _role = 'customer';
@@ -21,6 +21,28 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _existingEmail;
   bool _checkingPhone = false;
   Timer? _debounceTimer;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        _phone.clear();
+        _name.clear();
+        _city.clear();
+        _password.clear();
+        setState(() {
+          _needsPassword = false;
+          _existingEmail = null;
+          _checkingPhone = false;
+          _role = 'customer';
+        });
+        _debounceTimer?.cancel();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -29,6 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _phone.dispose();
     _city.dispose();
     _password.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -55,18 +78,27 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  Future<void> _submit() async {
+  Future<void> _submitLogin() async {
+    final auth = context.read<OurAuth.AuthProvider>();
+    if (_needsPassword) {
+      if (_password.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
+        return;
+      }
+      await auth.signInWithEmail(_existingEmail!, _password.text);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Номер не зарегистрирован. Перейдите на вкладку Регистрация.')));
+    }
+  }
+
+  Future<void> _submitRegister() async {
     if (_f.currentState!.validate()) {
       final auth = context.read<OurAuth.AuthProvider>();
       if (_needsPassword) {
-        if (_password.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
-          return;
-        }
-        await auth.signInWithEmail(_existingEmail!, _password.text);
-      } else {
-        await auth.signInWithPhone(name: _name.text, phone: _phone.text, city: _city.text, role: _role);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Этот номер уже зарегистрирован. Перейдите на вкладку Вход.')));
+        return;
       }
+      await auth.signInWithPhone(name: _name.text, phone: _phone.text, city: _city.text, role: _role);
     }
   }
 
@@ -103,38 +135,77 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 20),
         const Text('ААСтройПро', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.orange)),
         Text('Биржа отделочных работ', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-        const SizedBox(height: 32),
-        if (a.error != null) Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)), child: Text(a.error!, style: TextStyle(color: Colors.red.shade700), textAlign: TextAlign.center)),
-        TextFormField(
-          controller: _phone,
-          decoration: InputDecoration(labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey), hintText: '+7 (___) ___-__-__', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white),
-          keyboardType: TextInputType.phone,
-          inputFormatters: [PhoneInputFormatter()],
-          onChanged: (_) => _checkPhone(),
-          validator: (v) => v!.isEmpty ? 'Введите телефон' : null,
-        ),
-        if (_checkingPhone) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
-        if (!_needsPassword && !_checkingPhone) ...[
-          const SizedBox(height: 12),
-          TextFormField(controller: _name, decoration: InputDecoration(labelText: 'Ваше имя', prefixIcon: const Icon(Icons.person, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите имя' : null),
-          const SizedBox(height: 12),
-          TextFormField(controller: _city, decoration: InputDecoration(labelText: 'Город', prefixIcon: const Icon(Icons.location_city, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите город' : null),
-          const SizedBox(height: 24),
-          Row(children: [Expanded(child: _roleBtn('Я заказчик','customer')), const SizedBox(width: 24), Expanded(child: _roleBtn('Я исполнитель','executor'))]),
-        ] else if (_needsPassword && !_checkingPhone) ...[
-          const SizedBox(height: 12),
-          Text('Введите пароль для входа', style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(height: 12),
-          TextFormField(controller: _password, obscureText: true, decoration: InputDecoration(labelText: 'Пароль', prefixIcon: const Icon(Icons.lock, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), validator: (v) => v!.isEmpty ? 'Введите пароль' : null),
-          const SizedBox(height: 8),
-          TextButton(onPressed: _forgotPassword, child: const Text('Забыли пароль?')),
-        ],
         const SizedBox(height: 24),
-        SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
-          onPressed: (a.loading || _checkingPhone) ? null : _submit,
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-          child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : const Text('Войти', style: TextStyle(fontSize:16)),
-        )),
+        Container(
+          decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(12)),
+          child: TabBar(
+            controller: _tabController,
+            indicator: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(12)),
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.black54,
+            tabs: const [
+              Tab(text: 'Вход'),
+              Tab(text: 'Регистрация'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          height: 400,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              Column(children: [
+                TextFormField(
+                  controller: _phone,
+                  decoration: InputDecoration(labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey), hintText: '+7 (___) ___-__-__', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [PhoneInputFormatter()],
+                  onChanged: (_) => _checkPhone(),
+                ),
+                if (_checkingPhone) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
+                if (_needsPassword && !_checkingPhone) ...[
+                  const SizedBox(height: 12),
+                  Text('Введите пароль для входа', style: TextStyle(color: Colors.grey.shade600)),
+                  const SizedBox(height: 12),
+                  TextFormField(controller: _password, obscureText: true, decoration: InputDecoration(labelText: 'Пароль', prefixIcon: const Icon(Icons.lock, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white)),
+                  const SizedBox(height: 8),
+                  TextButton(onPressed: _forgotPassword, child: const Text('Забыли пароль?')),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
+                  onPressed: (a.loading || _checkingPhone) ? null : _submitLogin,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                  child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : const Text('Войти', style: TextStyle(fontSize:16)),
+                )),
+              ]),
+              Column(children: [
+                TextFormField(
+                  controller: _phone,
+                  decoration: InputDecoration(labelText: 'Телефон', prefixIcon: const Icon(Icons.phone, color: Colors.grey), hintText: '+7 (___) ___-__-__', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [PhoneInputFormatter()],
+                  onChanged: (_) => _checkPhone(),
+                ),
+                if (_checkingPhone) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
+                if (!_needsPassword && !_checkingPhone) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(controller: _name, decoration: InputDecoration(labelText: 'Ваше имя', prefixIcon: const Icon(Icons.person, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите имя' : null),
+                  const SizedBox(height: 12),
+                  TextFormField(controller: _city, decoration: InputDecoration(labelText: 'Город', prefixIcon: const Icon(Icons.location_city, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите город' : null),
+                  const SizedBox(height: 24),
+                  Row(children: [Expanded(child: _roleBtn('Я заказчик','customer')), const SizedBox(width: 24), Expanded(child: _roleBtn('Я исполнитель','executor'))]),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
+                  onPressed: (a.loading || _checkingPhone) ? null : _submitRegister,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                  child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : const Text('Зарегистрироваться', style: TextStyle(fontSize:16)),
+                )),
+              ]),
+            ],
+          ),
+        ),
         const SizedBox(height: 32),
         GestureDetector(
           onTap: () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/preview'),
