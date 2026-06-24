@@ -53,7 +53,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       if ((d.data()['orderId'] as String?) == widget.order.id && List<String>.from(d.data()['participants']).contains(widget.order.authorId)) return d.id;
     }
     final ref = FirebaseFirestore.instance.collection('chats').doc();
-    await ref.set({'participants': [u.uid, widget.order.authorId], 'orderId': widget.order.id, 'lastMessage': '', 'lastMessageTime': DateTime.now().toIso8601String()});
+    await ref.set({'participants': [u.uid, widget.order.authorId], 'orderId': widget.order.id, 'lastMessage': '', 'lastMessageTime': DateTime.now().toIso8601String(), 'createdAt': DateTime.now().toIso8601String()});
     return ref.id;
   }
 

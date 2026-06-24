@@ -71,7 +71,7 @@ class FirestoreService {
       participants: [userId1, userId2],
       orderId: orderId,
     );
-    await chatRef.set(chat.toMap());
+    await chatRef.set({...chat.toMap(), 'createdAt': DateTime.now().toIso8601String()});
     return chatRef.id;
   }
 
