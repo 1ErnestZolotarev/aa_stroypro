@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../providers/auth_provider.dart';
+import '../providers/auth_provider.dart' as OurAuth;
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     if (_f.currentState!.validate()) {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read<OurAuth.AuthProvider>();
       if (_needsPassword) {
         if (_password.text.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
@@ -95,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final a = context.watch<AuthProvider>();
+    final a = context.watch<OurAuth.AuthProvider>();
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       body: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(32), child: Form(key: _f, child: Column(mainAxisSize: MainAxisSize.min, children: [
