@@ -17,33 +17,39 @@ class _LoginScreenState extends State<LoginScreen> {
   String _role = 'customer';
   bool _needsPassword = false;
   String? _existingEmail;
+  bool _checkingPhone = false;   // ← проверка идёт
 
   Future<void> _checkPhone() async {
     final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
-    if (phone.length < 11) return;
-    final service = AuthService();
-    final result = await service.checkPhone(_phone.text);
-    if (mounted) {
-      setState(() {
-        _needsPassword = result['needsPassword'] as bool;
-        _existingEmail = result['email'] as String?;
-      });
+    if (phone.length < 11) {
+      setState(() { _needsPassword = false; _existingEmail = null; _checkingPhone = false; });
+      return;
+    }
+    setState(() => _checkingPhone = true);
+    try {
+      final result = await AuthService().checkPhone(_phone.text);
+      if (mounted) {
+        setState(() {
+          _needsPassword = result['needsPassword'] as bool;
+          _existingEmail = result['email'] as String?;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _checkingPhone = false);
     }
   }
 
   Future<void> _submit() async {
     if (_f.currentState!.validate()) {
       final auth = context.read<AuthProvider>();
-      final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
       if (_needsPassword) {
+        if (_password.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
+          return;
+        }
         await auth.signInWithEmail(_existingEmail!, _password.text);
       } else {
-        await auth.signInWithPhone(
-          name: _name.text,
-          phone: _phone.text,
-          city: _city.text,
-          role: _role,
-        );
+        await auth.signInWithPhone(name: _name.text, phone: _phone.text, city: _city.text, role: _role);
       }
     }
   }
@@ -68,14 +74,15 @@ class _LoginScreenState extends State<LoginScreen> {
           onChanged: (_) => _checkPhone(),
           validator: (v) => v!.isEmpty ? 'Введите телефон' : null,
         ),
-        if (!_needsPassword) ...[
+        if (_checkingPhone) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
+        if (!_needsPassword && !_checkingPhone) ...[
           const SizedBox(height: 12),
           TextFormField(controller: _name, decoration: InputDecoration(labelText: 'Ваше имя', prefixIcon: const Icon(Icons.person, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите имя' : null),
           const SizedBox(height: 12),
           TextFormField(controller: _city, decoration: InputDecoration(labelText: 'Город', prefixIcon: const Icon(Icons.location_city, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), inputFormatters: [CapitalizeFirstLetterFormatter()], validator: (v) => v!.isEmpty ? 'Введите город' : null),
           const SizedBox(height: 24),
           Row(children: [Expanded(child: _roleBtn('Я заказчик','customer')), const SizedBox(width: 24), Expanded(child: _roleBtn('Я исполнитель','executor'))]),
-        ] else ...[
+        ] else if (_needsPassword && !_checkingPhone) ...[
           const SizedBox(height: 12),
           Text('Введите пароль для входа', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 12),
@@ -83,12 +90,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
         const SizedBox(height: 24),
         SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
-          onPressed: a.loading ? null : _submit,
+          onPressed: (a.loading || _checkingPhone) ? null : _submit,
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
           child: a.loading ? const SizedBox(width:24,height:24,child: CircularProgressIndicator(color:Colors.white,strokeWidth:2)) : const Text('Войти', style: TextStyle(fontSize:16)),
         )),
         const SizedBox(height: 32),
-        // Ссылки на документы
         GestureDetector(
           onTap: () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/preview'),
           child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),

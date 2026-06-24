@@ -23,8 +23,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _linkEmail() async {
     final phone = context.read<AuthProvider>().currentPhone;
     if (phone == null) return;
+    final email = _emailCtrl.text.trim();
+    final password = _passCtrl.text.trim();
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите корректный email')));
+      return;
+    }
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Пароль должен быть не менее 6 символов')));
+      return;
+    }
     try {
-      await AuthService().linkEmail(phone, _emailCtrl.text, _passCtrl.text);
+      await AuthService().linkEmail(phone, email, password);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Письмо для подтверждения отправлено на почту')));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
@@ -43,7 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         TextFormField(controller: _name, decoration: const InputDecoration(labelText:'Имя',prefixIcon:Icon(Icons.person)), enabled: _editing, validator: (v)=>v!.isEmpty?'Введите имя':null), const SizedBox(height:16),
         TextFormField(controller: _city, decoration: const InputDecoration(labelText:'Город',prefixIcon:Icon(Icons.location_city)), enabled: _editing, validator: (v)=>v!.isEmpty?'Введите город':null), const SizedBox(height:16),
         SegmentedButton<String>(segments: const [ButtonSegment(value:'customer',label:Text('Заказчик')),ButtonSegment(value:'executor',label:Text('Исполнитель'))], selected: {_role}, onSelectionChanged: _editing?(s)=>setState(()=>_role=s.first):null), const SizedBox(height:16),
-        // Привязка email
         ListTile(
           leading: const Icon(Icons.email, color: Colors.orange),
           title: const Text('Безопасность'),
@@ -52,8 +61,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: () => showDialog(context: context, builder: (ctx) => AlertDialog(
             title: const Text('Привязать email'),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Email')),
-              TextField(controller: _passCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Пароль')),
+              TextField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Email'), keyboardType: TextInputType.emailAddress),
+              TextField(controller: _passCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Пароль (мин. 6 символов)')),
             ]),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
