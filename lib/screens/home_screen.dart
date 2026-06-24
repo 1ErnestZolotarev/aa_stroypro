@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _applyFilters() { context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter, initialLoad: true); }
   void _resetToHome() { final u = context.read<AuthProvider>().user; setState(() { _searchCtrl.clear(); _searchWord = null; _selectedCity = u?.city; _typeFilter = 'all'; _isNearby = true; _showSuggestions = false; }); _applyFilters(); }
   void _toggleNearby() { setState(() { if (_isNearby) { _selectedCity = null; _isNearby = false; } else { final u = context.read<AuthProvider>().user; _selectedCity = u?.city; _isNearby = true; } }); _applyFilters(); }
-  void _openChats() { final u = context.read<AuthProvider>().user; if (u != null) Navigator.push(context, MaterialPageRoute(builder: (_) => ChatsListScreen(userId: u.uid))); }
+  void _openChats() { final u = context.read<AuthProvider>().user; if (u != null) Navigator.push(context, MaterialPageRoute(builder: (_) => ChatsListScreen(userId: u.uid))).then((_) => _listenUnread()); }
 
   @override
   Widget build(BuildContext context) {
@@ -54,9 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(title: GestureDetector(onTap: _resetToHome, child: const Text('ААСтройПро')), actions: [
         IconButton(icon: const Icon(Icons.home), onPressed: _resetToHome),
-        // Иконка геолокации
         IconButton(icon: Icon(_isNearby ? Icons.near_me : Icons.near_me_disabled, color: _isNearby ? Colors.green : null), tooltip: _isNearby ? 'Рядом: ${u?.city ?? ""}' : 'Все города', onPressed: _toggleNearby),
-        // Иконка чатов
         Stack(children: [
           IconButton(icon: const Icon(Icons.chat), onPressed: _openChats),
           if (_unreadCount > 0) Positioned(right: 6, top: 6, child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)), constraints: const BoxConstraints(minWidth: 18, minHeight: 18), child: Text('$_unreadCount', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center))),
@@ -80,9 +78,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showCityPicker() { showModalBottomSheet(context: context, builder: (_) => CityPicker(selectedCity: _selectedCity, onChanged: (city) { setState(() { _selectedCity = city; _isNearby = false; }); Navigator.pop(context); _applyFilters(); })); }
 }
 
+// Список чатов с возможностью удаления (как в Авито)
 class ChatsListScreen extends StatelessWidget {
   final String userId;
   const ChatsListScreen({super.key, required this.userId});
+
+  Future<void> _deleteChat(String chatId) async {
+    await FirebaseFirestore.instance.collection('chats').doc(chatId).delete();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Чаты')),
@@ -90,18 +94,26 @@ class ChatsListScreen extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: userId).orderBy('lastMessageTime', descending: true).snapshots(),
       builder: (_, s) {
         if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        if (s.hasError) return Center(child: Text('Ошибка: ${s.error}'));
         if (!s.hasData || s.data!.docs.isEmpty) return const Center(child: Text('Нет чатов'));
         final chats = s.data!.docs;
         return ListView.builder(
           itemCount: chats.length,
           itemBuilder: (_, i) {
             final d = chats[i].data() as Map<String, dynamic>;
-            return ListTile(
-              leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.chat, color: Colors.orange)),
-              title: Text(d['lastMessage'] as String? ?? 'Новый чат'),
-              subtitle: d['lastMessageTime'] != null ? Text(_fmt(d['lastMessageTime'] as String)) : null,
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: chats[i].id))),
+            return Dismissible(
+              key: Key(chats[i].id),
+              direction: DismissDirection.endToStart,
+              background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
+              confirmDismiss: (_) async => await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Удалить чат?'), content: const Text('Вся переписка будет удалена.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Удалить', style: TextStyle(color: Colors.red)))])) ?? false,
+              onDismissed: (_) => _deleteChat(chats[i].id),
+              child: ListTile(
+                leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.chat, color: Colors.orange)),
+                title: Text(d['lastMessage'] as String? ?? 'Новый чат'),
+                subtitle: d['lastMessageTime'] != null ? Text(_fmt(d['lastMessageTime'] as String)) : null,
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: chats[i].id))),
+              ),
             );
           },
         );
