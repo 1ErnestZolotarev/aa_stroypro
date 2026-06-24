@@ -49,7 +49,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       try {
         final u = context.read<AuthProvider>().user!;
         if (!u.isPro && !_editing) {
-          final s = await FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: u.uid).get();
+          final s = await FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: u.phone).get();
           if (u.role == 'customer' && s.docs.length >= u.ordersLimit) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Лимит ${u.ordersLimit} заказов'))); setState(() => _publishing = false); return; }
           if (u.role == 'executor' && s.docs.length >= 1) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('У вас уже есть предложение'))); setState(() => _publishing = false); return; }
         }

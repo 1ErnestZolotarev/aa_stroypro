@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
@@ -7,84 +6,53 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
+  /// Вход/регистрация по номеру телефона
   Future<AppUser?> signInWithPhone({
     required String name,
     required String phone,
     required String city,
     required String role,
   }) async {
-    final credential = await _auth.signInAnonymously();
-    final user = credential.user;
-    if (user == null) return null;
+    // 1. Анонимный вход (только для аутентификации, uid не важен)
+    await _auth.signInAnonymously();
 
-    final existingUser = await _getUserByPhone(phone);
-    
-    if (existingUser != null) {
-      if (existingUser.isBanned) {
-        throw Exception('Аккаунт заблокирован: ${existingUser.bannedReason ?? "Причина не указана"}');
-      }
-      
-      final updatedUser = AppUser(
-        uid: user.uid,
-        name: name,
-        phone: phone,
-        city: city,
-        role: role,
-        avatarUrl: existingUser.avatarUrl,
-        isPro: existingUser.isPro,
-        ordersLimit: existingUser.ordersLimit,
-        isBanned: existingUser.isBanned,
-        bannedReason: existingUser.bannedReason,
-        createdAt: existingUser.createdAt,
-      );
-      
-      await _firestore.collection('users').doc(user.uid).set(updatedUser.toMap());
-      return updatedUser;
+    // 2. Ключ документа – очищенный номер телефона
+    final docId = phone.replaceAll(RegExp(r'\D'), ''); // 79991234567
+    final userRef = _firestore.collection('users').doc(docId);
+
+    // 3. Проверяем, существует ли уже такой пользователь
+    final existing = await userRef.get();
+    if (existing.exists) {
+      // Обновляем имя/город, но сохраняем старые данные
+      await userRef.update({
+        'name': name,
+        'city': city,
+        'role': role,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     } else {
-      final appUser = AppUser(
-        uid: user.uid,
-        name: name,
+      // Новый пользователь
+      final newUser = AppUser(
         phone: phone,
+        name: name,
         city: city,
         role: role,
         createdAt: DateTime.now(),
       );
-      await _firestore.collection('users').doc(user.uid).set(appUser.toMap());
-      return appUser;
+      await userRef.set(newUser.toMap());
     }
-  }
 
-  Future<AppUser?> _getUserByPhone(String phone) async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .where('phone', isEqualTo: phone)
-          .limit(1)
-          .get();
-      
-      if (snapshot.docs.isNotEmpty) {
-        return AppUser.fromMap(snapshot.docs.first.data());
-      }
-    } catch (e) {
-      debugPrint('Ошибка поиска пользователя: $e');
-    }
-    return null;
+    // 4. Возвращаем актуальные данные пользователя
+    final doc = await userRef.get();
+    return AppUser.fromMap(doc.data()!);
   }
 
   Future<void> signOut() => _auth.signOut();
 
-  Future<AppUser?> getCurrentUser() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      try {
-        final doc = await _firestore.collection('users').doc(user.uid).get();
-        if (doc.exists) return AppUser.fromMap(doc.data()!);
-      } catch (e) {
-        debugPrint('Ошибка загрузки пользователя: $e');
-      }
-    }
+  Future<AppUser?> getCurrentUser(String phone) async {
+    final docId = phone.replaceAll(RegExp(r'\D'), '');
+    final doc = await _firestore.collection('users').doc(docId).get();
+    if (doc.exists) return AppUser.fromMap(doc.data()!);
     return null;
   }
 }

@@ -39,7 +39,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final u = context.read<AuthProvider>().user;
     if (u == null) return;
     final s = await FirebaseFirestore.instance.collection('chats')
-        .where('participants', arrayContains: u.uid)
+        .where('participants', arrayContains: u.phone)
         .get();
     for (var d in s.docs) {
       final participants = List<String>.from(d.data()['participants'] ?? []);
@@ -55,7 +55,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final u = context.read<AuthProvider>().user!;
     // Ищем существующий чат между этими двумя пользователями
     final s = await FirebaseFirestore.instance.collection('chats')
-        .where('participants', arrayContains: u.uid)
+        .where('participants', arrayContains: u.phone)
         .get();
     for (var d in s.docs) {
       final participants = List<String>.from(d.data()['participants'] ?? []);

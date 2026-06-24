@@ -5,7 +5,7 @@ class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> updateUser(AppUser user) async {
-    await _firestore.collection('users').doc(user.uid).update(user.toMap());
+    await _firestore.collection('users').doc(user.phone).update(user.toMap());
   }
 
   Stream<AppUser?> getUserStream(String uid) {

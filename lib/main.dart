@@ -37,7 +37,7 @@ class _MyAppState extends State<MyApp> {
     _onlineTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       final user = context.read<AuthProvider>().user;
       if (user != null) {
-        FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        FirebaseFirestore.instance.collection('users').doc(user.phone).update({
           'lastSeen': DateTime.now().toIso8601String(),
         });
       }

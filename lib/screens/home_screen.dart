@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _initCity() { final u = context.read<AuthProvider>().user; if (u?.city != null && u!.city.isNotEmpty) { _selectedCity = u.city; _isNearby = true; } _applyFilters(); }
-  void _listenUnread() { final u = context.read<AuthProvider>().user; if (u == null) return; FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: u.uid).snapshots().listen((s) { if (mounted) setState(() => _unreadCount = s.docs.length); }); }
+  void _listenUnread() { final u = context.read<AuthProvider>().user; if (u == null) return; FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: u.phone).snapshots().listen((s) { if (mounted) setState(() => _unreadCount = s.docs.length); }); }
   void _onScroll() { if (_sc.position.pixels >= _sc.position.maxScrollExtent - 200) context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter); }
   void _applyFilters() { context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter, initialLoad: true); }
   void _resetToHome() { final u = context.read<AuthProvider>().user; setState(() { _searchCtrl.clear(); _searchWord = null; _selectedCity = u?.city; _typeFilter = 'all'; _isNearby = true; _showSuggestions = false; }); _applyFilters(); }
