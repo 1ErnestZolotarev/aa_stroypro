@@ -1,3 +1,4 @@
+import "dart:async";
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -20,23 +21,26 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _checkingPhone = false;   // ← проверка идёт
 
   Future<void> _checkPhone() async {
-    final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
-    if (phone.length < 11) {
-      setState(() { _needsPassword = false; _existingEmail = null; _checkingPhone = false; });
-      return;
-    }
-    setState(() => _checkingPhone = true);
-    try {
-      final result = await AuthService().checkPhone(_phone.text);
-      if (mounted) {
-        setState(() {
-          _needsPassword = result['needsPassword'] as bool;
-          _existingEmail = result['email'] as String?;
-        });
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      final phone = _phone.text.replaceAll(RegExp(r"\D"), "");
+      if (phone.length < 11) {
+        setState(() { _needsPassword = false; _existingEmail = null; _checkingPhone = false; });
+        return;
       }
-    } finally {
-      if (mounted) setState(() => _checkingPhone = false);
-    }
+      setState(() => _checkingPhone = true);
+      try {
+        final result = await AuthService().checkPhone(_phone.text);
+        if (mounted) {
+          setState(() {
+            _needsPassword = result["needsPassword"] as bool;
+            _existingEmail = result["email"] as String?;
+          });
+        }
+      } finally {
+        if (mounted) setState(() => _checkingPhone = false);
+      }
+    });
   }
 
   Future<void> _submit() async {
@@ -116,15 +120,20 @@ class _LoginScreenState extends State<LoginScreen> {
       Container(height: 2, color: _role==role?Colors.orange:Colors.transparent),
     ]),
   );
-  Future<void> _openUrl(String url) async { final u = Uri.parse(url); if (await canLaunchUrl(u)) await launchUrl(u, mode: LaunchMode.externalApplication); }
-}
-
-class CapitalizeFirstLetterFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue old, TextEditingValue now) {
-    if (now.text.isEmpty) return now;
-    final words = now.text.split(' ').where((w) => w.isNotEmpty).map((w) => w.length==1 ? w.toUpperCase() : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}').join(' ');
-    return TextEditingValue(text: words, selection: TextSelection.collapsed(offset: words.length));
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Пробуем открыть без специального режима
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Не удалось открыть ссылку: $e")),
+      );
+    }
   }
 }
 
