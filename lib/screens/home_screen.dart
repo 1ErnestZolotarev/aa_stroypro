@@ -15,7 +15,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _sc = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
-  String? _selectedCity, _searchWord, _typeFilter = 'all';
+  String? _selectedCity, _searchWord; String _typeFilter = "all";
   int _unreadChats = 0;
   List<String> _suggestions = [];
   bool _showSuggestions = false;
