@@ -13,7 +13,6 @@ class AppUser {
   final int thanks;
   final int noShows;
   final int complaints;
-  final List<String> favorites; // ID избранных заказов
   final DateTime? lastSeen; // Когда был онлайн
 
   AppUser({
@@ -24,7 +23,6 @@ class AppUser {
     this.rating = 0, this.totalRatings = 0,
     this.quickResponses = 0, this.completedOrders = 0,
     this.thanks = 0, this.noShows = 0, this.complaints = 0,
-    this.favorites = const [],
     this.lastSeen,
   });
 
@@ -38,7 +36,6 @@ class AppUser {
     'rating': rating, 'totalRatings': totalRatings,
     'quickResponses': quickResponses, 'completedOrders': completedOrders,
     'thanks': thanks, 'noShows': noShows, 'complaints': complaints,
-    'favorites': favorites,
     'lastSeen': lastSeen?.toIso8601String() ?? '',
   };
 
@@ -52,7 +49,6 @@ class AppUser {
     rating: (m['rating'] ?? 0).toDouble(), totalRatings: m['totalRatings'] ?? 0,
     quickResponses: m['quickResponses'] ?? 0, completedOrders: m['completedOrders'] ?? 0,
     thanks: m['thanks'] ?? 0, noShows: m['noShows'] ?? 0, complaints: m['complaints'] ?? 0,
-    favorites: List<String>.from(m[favorites] ?? []),
     lastSeen: m['lastSeen'] != null && m['lastSeen'].toString().isNotEmpty ? DateTime.parse(m['lastSeen']) : null,
   );
 }

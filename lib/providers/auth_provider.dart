@@ -18,7 +18,6 @@ class AuthProvider with ChangeNotifier {
   bool get isBanned => _isBanned;
 
   AuthProvider() {
-    _updateLastSeen();
     _auth.authStateChanges.listen((firebaseUser) async {
       if (firebaseUser != null) {
         try {
@@ -113,12 +112,10 @@ class AuthProvider with ChangeNotifier {
     _isBanned = false;
     notifyListeners();
   }
-}
-
-  Future<void> _updateLastSeen() async {
+  void _updateLastSeen() {
     if (_user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(_user!.uid).update({
-        'lastSeen': DateTime.now().toIso8601String(),
-      });
+      FirebaseFirestore.instance.collection("users").doc(_user!.uid).update({"lastSeen": DateTime.now().toIso8601String()});
     }
   }
+}
+
