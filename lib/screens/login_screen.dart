@@ -52,15 +52,17 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  Future<void> _submit() async {
+  Future<void> _submitLogin() async {
+    final auth = context.read<OurAuth.AuthProvider>();
     if (_needsPassword) {
       if (_password.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
         return;
       }
-      await context.read<OurAuth.AuthProvider>().signInWithEmail(_existingEmail!, _password.text);
+      await auth.signInWithEmail(_existingEmail!, _password.text);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Номер не зарегистрирован. Перейдите к регистрации.')));
+      // Номер существует, но без email – просто входим
+      await auth.signInWithPhone(name: '', phone: _phone.text, city: '', role: 'customer');
     }
   }
 
@@ -106,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: (a.loading || _checkingPhone) ? null : _submit,
+                onPressed: (a.loading || _checkingPhone) ? null : _submitLogin,
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 child: a.loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Войти', style: TextStyle(fontSize: 16)),
               ),
