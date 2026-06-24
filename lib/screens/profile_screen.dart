@@ -88,6 +88,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 24),
               // Мои заказы
               const Divider(),
+              // Избранное
+              const Divider(),
+              const Padding(padding: EdgeInsets.all(8), child: Text("Избранное", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+              FutureBuilder<QuerySnapshot>(
+                future: FirebaseFirestore.instance.collection("orders").where(FieldPath.documentId, whereIn: user.favorites.isEmpty ? [""] : user.favorites).get(),
+                builder: (_, s) {
+                  if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                  if (!s.hasData || s.data!.docs.isEmpty) return const Padding(padding: EdgeInsets.all(16), child: Text("Нет избранных объявлений", style: TextStyle(color: Colors.grey)));
+                  return ListView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: s.data!.docs.length, itemBuilder: (_, i) {
+                    final o = ServiceOrder.fromMap(s.data!.docs[i].id, s.data!.docs[i].data() as Map<String, dynamic>);
+                    return Card(child: ListTile(title: Text(o.title, maxLines: 1), subtitle: Text("${o.city} • ${o.budget} ₽"), trailing: Chip(label: Text(o.type == "offer" ? "Исполнитель" : "Заказчик")), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: o)))));
+                  });
+                },
+              ),
+              const Divider(),
               const Padding(padding: EdgeInsets.all(8), child: Text('Мои объявления', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
               FutureBuilder<QuerySnapshot>(
                 future: FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: user.uid).orderBy('createdAt', descending: true).get(),

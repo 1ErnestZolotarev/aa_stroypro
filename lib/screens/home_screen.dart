@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final FocusNode _searchFocus = FocusNode();
   String? _selectedCity, _searchWord;
   String _typeFilter = 'all';
+  int? _budgetFrom, _budgetTo;
   int _unreadChats = 0;
   List<String> _suggestions = [];
   bool _showSuggestions = false;
@@ -261,6 +262,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           // Фильтры
+          // Фильтр по бюджету
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), child: Row(children: [
+            Expanded(child: TextField(decoration: const InputDecoration(labelText: "От (₽)", border: OutlineInputBorder()), keyboardType: TextInputType.number, onSubmitted: (v) { _budgetFrom = int.tryParse(v); _applyFilters(); })),
+            const SizedBox(width: 8),
+            Expanded(child: TextField(decoration: const InputDecoration(labelText: "До (₽)", border: OutlineInputBorder()), keyboardType: TextInputType.number, onSubmitted: (v) { _budgetTo = int.tryParse(v); _applyFilters(); })),
+          ])),
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

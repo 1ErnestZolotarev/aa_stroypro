@@ -10,6 +10,7 @@ class ServiceOrder {
   final String type; // 'offer' или 'request'
   final List<String> keywords;
   final DateTime createdAt;
+  final String status; // active, in_work, completed
 
   ServiceOrder({
     required this.id,
@@ -23,6 +24,7 @@ class ServiceOrder {
     required this.type,
     required this.keywords,
     required this.createdAt,
+    this.status = "active",
   });
 
   Map<String, dynamic> toMap() => {
@@ -37,6 +39,7 @@ class ServiceOrder {
         'type': type,
         'keywords': keywords,
         'createdAt': createdAt.toIso8601String(),
+    'status': status,
       };
 
   factory ServiceOrder.fromMap(String id, Map<String, dynamic> map) =>

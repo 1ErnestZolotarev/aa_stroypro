@@ -115,6 +115,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ]),
           if (own && _chatId != null) OutlinedButton.icon(icon: const Icon(Icons.chat), label: const Text('Открыть чат'), onPressed: _openChat),
+          // Статус заказа
+          if (own) Row(children: [
+            const Text("Статус: "),
+            DropdownButton<String>(
+              value: widget.order.status,
+              items: const [
+                DropdownMenuItem(value: "active", child: Text("Активен")),
+                DropdownMenuItem(value: "in_work", child: Text("В работе")),
+                DropdownMenuItem(value: "completed", child: Text("Завершён")),
+              ],
+              onChanged: (v) async {
+                if (v != null) {
+                  await FirebaseFirestore.instance.collection("orders").doc(widget.order.id).update({"status": v});
+                  if (mounted) Navigator.pop(context);
+                }
+              },
+            ),
+          ]),
+          const SizedBox(height: 16),
           if (own && _chatId == null) const Text('Это ваше объявление', style: TextStyle(color: Colors.grey)),
         ]),
       ),
