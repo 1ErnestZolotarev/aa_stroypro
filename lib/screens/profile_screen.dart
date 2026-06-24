@@ -41,6 +41,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         TextFormField(controller: _city, decoration: const InputDecoration(labelText:'Город',prefixIcon:Icon(Icons.location_city)), enabled: _editing, validator: (v)=>v!.isEmpty?'Введите город':null), const SizedBox(height:16),
         SegmentedButton<String>(segments: const [ButtonSegment(value:'customer',label:Text('Заказчик')),ButtonSegment(value:'executor',label:Text('Исполнитель'))], selected: {_role}, onSelectionChanged: _editing?(s)=>setState(()=>_role=s.first):null), const SizedBox(height:32),
         if (_editing) _saving ? const CircularProgressIndicator() : ElevatedButton.icon(icon: const Icon(Icons.save), label: const Text('Сохранить'), onPressed: () async { if(_f.currentState!.validate()&&!_saving){setState(()=>_saving=true); try{await a.updateProfile(name:_name.text,phone:_phone.text,city:_city.text,role:_role); if(mounted){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Обновлено!')));setState(()=>_editing=false);}}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Ошибка:$e')));}finally{if(mounted)setState(()=>_saving=false);}}}), const SizedBox(height:24),
+          const Divider(),
+          const Padding(padding: EdgeInsets.all(8), child: Text("Мои чаты", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection("chats").where("participants", arrayContains: u.uid).orderBy("lastMessageTime", descending: true).snapshots(),
+            builder: (_, s) {
+              if (!s.hasData) return const Center(child: CircularProgressIndicator());
+              if (s.data!.docs.isEmpty) return const Padding(padding: EdgeInsets.all(16), child: Text("Нет чатов", style: TextStyle(color: Colors.grey)));
+              return ListView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: s.data!.docs.length, itemBuilder: (_, i) {
+                final d = s.data!.docs[i].data() as Map<String, dynamic>;
+                return ListTile(
+                  leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.chat, color: Colors.orange)),
+                  title: Text(d["lastMessage"] as String? ?? "Новый чат"),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: s.data!.docs[i].id))),
+                );
+              });
+            },
+          ),
+          const Divider(),
         const Divider(), const Padding(padding: EdgeInsets.all(8), child: Text('Мои объявления', style: TextStyle(fontSize:18, fontWeight: FontWeight.bold))),
         FutureBuilder<QuerySnapshot>(future: FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: u.uid).get(), builder: (_,s) {
           if (s.connectionState==ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
