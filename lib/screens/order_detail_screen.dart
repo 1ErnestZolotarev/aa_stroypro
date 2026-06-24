@@ -17,7 +17,6 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   String? _chatId;
   bool _loading = false;
-  bool _isOnline = false;
 
   @override
   void initState() {
@@ -30,7 +29,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     FirebaseFirestore.instance.collection('users').doc(widget.order.authorId).snapshots().listen((doc) {
       if (doc.exists && mounted) {
         final user = AppUser.fromMap(doc.data()!);
-        setState(() => _isOnline = user.isOnline);
       }
     });
   }
@@ -91,16 +89,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final cu = context.read<AuthProvider>().user;
-    final own = cu?.uid == widget.order.authorId;
+    final own = cu?.phone == widget.order.authorId;
     return Scaffold(
       appBar: AppBar(title: Text(widget.order.title), actions: [if(own) IconButton(icon: const Icon(Icons.edit), onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CreateOrderScreen(existingOrder: widget.order))))]),
       body: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text('Автор: ${widget.order.authorName}', style: const TextStyle(fontSize: 18)),
           const SizedBox(width: 8),
-          Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: _isOnline ? Colors.green : Colors.grey.shade400)),
           const SizedBox(width: 4),
-          Text(_isOnline ? 'онлайн' : 'был(а) недавно', style: TextStyle(fontSize: 12, color: _isOnline ? Colors.green : Colors.grey)),
         ]),
         const SizedBox(height: 8), Text('Город: ${widget.order.city}'), const SizedBox(height: 8),
         if (widget.order.address != null && widget.order.address!.isNotEmpty) Text('Адрес: ${widget.order.address}'),
