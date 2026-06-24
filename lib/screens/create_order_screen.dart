@@ -6,263 +6,81 @@ import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/search_service.dart';
 
-class CreateOrderScreen extends StatefulWidget {
-  final ServiceOrder? existingOrder;
-
-  const CreateOrderScreen({super.key, this.existingOrder});
-
-  @override
-  State<CreateOrderScreen> createState() => _CreateOrderScreenState();
-}
-
+class CreateOrderScreen extends StatefulWidget { final ServiceOrder? existingOrder; const CreateOrderScreen({super.key, this.existingOrder}); @override State<CreateOrderScreen> createState() => _CreateOrderScreenState(); }
 class _CreateOrderScreenState extends State<CreateOrderScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _titleCtrl;
-  late TextEditingController _descCtrl;
-  late TextEditingController _budgetCtrl;
-  late TextEditingController _cityCtrl;
+  final _f = GlobalKey<FormState>();
+  late TextEditingController _title, _desc, _budget, _city;
   late String _type;
-  bool _isPublishing = false;
-
-  bool get _isEditing => widget.existingOrder != null;
-
-  @override
-  void initState() {
-    super.initState();
-    final order = widget.existingOrder;
-    _titleCtrl = TextEditingController(text: order?.title ?? '');
-    _descCtrl = TextEditingController(text: order?.description ?? '');
-    _budgetCtrl = TextEditingController(text: order?.budget.toString() ?? '');
-    _cityCtrl = TextEditingController(text: order?.city ?? '');
-    _type = order?.type ?? 'request';
-  }
+  bool _publishing = false;
+  bool get _editing => widget.existingOrder != null;
 
   @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _descCtrl.dispose();
-    _budgetCtrl.dispose();
-    _cityCtrl.dispose();
-    super.dispose();
-  }
+  void initState() { super.initState(); final o = widget.existingOrder; _title = TextEditingController(text: o?.title??''); _desc = TextEditingController(text: o?.description??''); _budget = TextEditingController(text: o?.budget.toString()??''); _city = TextEditingController(text: o?.city??''); _type = o?.type??'request'; }
 
-  String _normalizeCity(String input) {
-    return input.trim().split(' ').map((w) {
-      if (w.isEmpty) return '';
-      return '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}';
-    }).join(' ');
-  }
+  @override
+  void dispose() { _title.dispose(); _desc.dispose(); _budget.dispose(); _city.dispose(); super.dispose(); }
 
-  /// Проверяет, не превышен ли лимит объявлений
-  Future<bool> _checkLimit() async {
-    final user = context.read<AuthProvider>().user!;
-    
-    // PRO пользователи без лимита
-    if (user.isPro && user.ordersLimit == 0) return true;
-    
-    // Считаем текущие объявления пользователя
-    final snapshot = await FirebaseFirestore.instance
-        .collection('orders')
-        .where('authorId', isEqualTo: user.uid)
-        .get();
-    
-    return snapshot.docs.length < user.ordersLimit;
-  }
+  String _norm(String s) => s.trim().split(' ').map((w) => w.isEmpty?'':'${w[0].toUpperCase()}${w.substring(1).toLowerCase()}').join(' ');
 
   @override
   Widget build(BuildContext context) {
-    final user = context.read<AuthProvider>().user!;
+    final u = context.read<AuthProvider>().user!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Редактировать объявление' : 'Новое объявление'),
-        actions: [
-          if (_isEditing)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              tooltip: 'Удалить',
-              onPressed: _deleteOrder,
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Информация о лимите
-              if (!user.isPro)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Бесплатный лимит: ${user.ordersLimit} объявлений',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              TextFormField(
-                controller: _titleCtrl,
-                decoration: const InputDecoration(labelText: 'Название работы'),
-                validator: (v) => v!.isEmpty ? 'Обязательно' : null,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _descCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Описание'),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _budgetCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Бюджет (₽)'),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _cityCtrl,
-                decoration: const InputDecoration(labelText: 'Город'),
-                validator: (v) => v!.isEmpty ? 'Укажите город' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                initialValue: user.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Контактный телефон',
-                  prefixIcon: Icon(Icons.phone),
-                ),
-                enabled: false,
-              ),
-              const SizedBox(height: 16),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'request', label: Text('Ищу исполнителя')),
-                  ButtonSegment(value: 'offer', label: Text('Предлагаю услуги')),
-                ],
-                selected: {_type},
-                onSelectionChanged: _isPublishing
-                    ? null
-                    : (s) => setState(() => _type = s.first),
-              ),
-              const SizedBox(height: 24),
-              _isPublishing
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _publishOrder,
-                      child: Text(_isEditing ? 'Сохранить' : 'Опубликовать'),
-                    ),
-            ],
-          ),
-        ),
-      ),
+      appBar: AppBar(title: Text(_editing?'Редактировать':'Новое объявление'), actions: [if(_editing) IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: _delete)]),
+      body: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Form(key: _f, child: Column(children: [
+        // Информация о лимите
+        if (!u.isPro)
+          Container(padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom:16), decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)), child: Row(children: [const Icon(Icons.info_outline, color: Colors.orange, size:20), const SizedBox(width:8), Expanded(child: Text(u.role == 'customer' ? 'Лимит: ${u.ordersLimit} заказов' : 'Можно разместить 1 предложение', style: const TextStyle(fontSize:14)))])),
+        _tf(_title, 'Название работы'), const SizedBox(height:8),
+        _tf(_desc, 'Описание', lines: 3), const SizedBox(height:8),
+        _tf(_budget, 'Бюджет (₽)', num: true), const SizedBox(height:8),
+        _tf(_city, 'Город'), const SizedBox(height:16),
+        TextFormField(initialValue: u.phone, decoration: const InputDecoration(labelText: 'Контактный телефон', prefixIcon: Icon(Icons.phone)), enabled: false),
+        const SizedBox(height:16),
+        SegmentedButton<String>(segments: const [ButtonSegment(value:'request',label:Text('Ищу исполнителя')),ButtonSegment(value:'offer',label:Text('Предлагаю услуги'))], selected: {_type}, onSelectionChanged: _publishing?null:(s) => setState(() => _type = s.first)),
+        const SizedBox(height:24),
+        _publishing ? const CircularProgressIndicator() : ElevatedButton(onPressed: _publish, child: Text(_editing?'Сохранить':'Опубликовать')),
+      ]))),
     );
   }
 
-  Future<void> _publishOrder() async {
-    if (_formKey.currentState!.validate() && !_isPublishing) {
-      setState(() => _isPublishing = true);
+  Widget _tf(TextEditingController c, String label, {int lines=1, bool num=false}) => TextFormField(controller: c, maxLines: lines, keyboardType: num?TextInputType.number:null, decoration: InputDecoration(labelText: label), validator: (v) => v!.isEmpty?'Обязательно':null);
 
+  Future<void> _publish() async {
+    if (_f.currentState!.validate() && !_publishing) {
+      setState(() => _publishing = true);
       try {
-        // Проверяем лимит (только для новых объявлений)
-        if (!_isEditing) {
-          final canCreate = await _checkLimit();
-          if (!canCreate) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Достигнут лимит бесплатных объявлений'),
-                  action: SnackBarAction(
-                    label: 'PRO',
-                    onPressed: () {
-                      // В будущем здесь будет экран подписки
-                    },
-                  ),
-                ),
-              );
-            }
+        final u = context.read<AuthProvider>().user!;
+        
+        if (!u.isPro && !_editing) {
+          final s = await FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: u.uid).get();
+          final currentCount = s.docs.length;
+          
+          // Для заказчика — лимит ordersLimit (10)
+          if (u.role == 'customer' && currentCount >= u.ordersLimit) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Лимит ${u.ordersLimit} заказов. Удалите старые.')));
+            setState(() => _publishing = false);
+            return;
+          }
+          
+          // Для исполнителя — только 1 предложение
+          if (u.role == 'executor' && currentCount >= 1) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('У вас уже есть предложение. Отредактируйте его.')));
+            setState(() => _publishing = false);
             return;
           }
         }
-
-        final user = context.read<AuthProvider>().user!;
-        final orderId = _isEditing ? widget.existingOrder!.id : DateTime.now().millisecondsSinceEpoch.toString();
-        final fullText = '${_titleCtrl.text} ${_descCtrl.text}';
-        final keywords = SearchService.extractKeywords(fullText);
-
-        final order = ServiceOrder(
-          id: orderId,
-          authorId: _isEditing ? widget.existingOrder!.authorId : user.uid,
-          authorName: _isEditing ? widget.existingOrder!.authorName : user.name,
-          authorPhone: user.phone,
-          title: _titleCtrl.text,
-          description: _descCtrl.text,
-          budget: int.tryParse(_budgetCtrl.text) ?? 0,
-          city: _normalizeCity(_cityCtrl.text),
-          type: _type,
-          keywords: keywords,
-          createdAt: _isEditing ? widget.existingOrder!.createdAt : DateTime.now(),
-        );
-
-        final firestoreService = FirestoreService();
-        if (_isEditing) {
-          await firestoreService.updateOrder(order);
-        } else {
-          await firestoreService.addOrder(order);
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(_isEditing ? 'Объявление обновлено!' : 'Объявление опубликовано!')),
-          );
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка: $e')),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isPublishing = false);
-        }
-      }
+        
+        final o = ServiceOrder(id: _editing?widget.existingOrder!.id:DateTime.now().millisecondsSinceEpoch.toString(), authorId: _editing?widget.existingOrder!.authorId:u.uid, authorName: _editing?widget.existingOrder!.authorName:u.name, authorPhone: u.phone, title: _title.text, description: _desc.text, budget: int.tryParse(_budget.text)??0, city: _norm(_city.text), type: _type, keywords: SearchService.extractKeywords('${_title.text} ${_desc.text}'), createdAt: _editing?widget.existingOrder!.createdAt:DateTime.now());
+        if (_editing) { await FirestoreService().updateOrder(o); } else { await FirestoreService().addOrder(o); }
+        if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_editing?'Обновлено!':'Опубликовано!'))); Navigator.pop(context); }
+      } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e'))); }
+      finally { if (mounted) setState(() => _publishing = false); }
     }
   }
 
-  Future<void> _deleteOrder() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Удалить объявление?'),
-        content: const Text('Это действие нельзя отменить.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && mounted) {
-      await FirestoreService().deleteOrder(widget.existingOrder!.id);
-      Navigator.pop(context);
-    }
+  Future<void> _delete() async {
+    final c = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Удалить?'), content: const Text('Нельзя отменить.'), actions: [TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Отмена')),TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Удалить',style:TextStyle(color:Colors.red)))]));
+    if (c==true && mounted) { await FirestoreService().deleteOrder(widget.existingOrder!.id); Navigator.pop(context); }
   }
 }
