@@ -32,15 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _initCity() { final u = context.read<AuthProvider>().user; if (u?.city != null && u!.city.isNotEmpty) { _selectedCity = u.city; _isNearby = true; } _applyFilters(); }
-
-  void _listenUnread() {
-    final u = context.read<AuthProvider>().user;
-    if (u == null) return;
-    FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: u.uid).snapshots().listen((s) {
-      if (mounted) setState(() => _unreadCount = s.docs.length);
-    });
-  }
-
+  void _listenUnread() { final u = context.read<AuthProvider>().user; if (u == null) return; FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: u.uid).snapshots().listen((s) { if (mounted) setState(() => _unreadCount = s.docs.length); }); }
   void _onScroll() { if (_sc.position.pixels >= _sc.position.maxScrollExtent - 200) context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter); }
   void _applyFilters() { context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter, initialLoad: true); }
   void _resetToHome() { final u = context.read<AuthProvider>().user; setState(() { _searchCtrl.clear(); _searchWord = null; _selectedCity = u?.city; _typeFilter = 'all'; _isNearby = true; _showSuggestions = false; }); _applyFilters(); }
@@ -55,10 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(title: GestureDetector(onTap: _resetToHome, child: const Text('ААСтройПро')), actions: [
         IconButton(icon: const Icon(Icons.home), onPressed: _resetToHome),
         IconButton(icon: Icon(_isNearby ? Icons.near_me : Icons.near_me_disabled, color: _isNearby ? Colors.green : null), tooltip: _isNearby ? 'Рядом: ${u?.city ?? ""}' : 'Все города', onPressed: _toggleNearby),
-        Stack(children: [
-          IconButton(icon: const Icon(Icons.chat), onPressed: _openChats),
-          if (_unreadCount > 0) Positioned(right: 6, top: 6, child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)), constraints: const BoxConstraints(minWidth: 18, minHeight: 18), child: Text('$_unreadCount', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center))),
-        ]),
+        Stack(children: [IconButton(icon: const Icon(Icons.chat), onPressed: _openChats), if (_unreadCount > 0) Positioned(right: 6, top: 6, child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)), constraints: const BoxConstraints(minWidth: 18, minHeight: 18), child: Text('$_unreadCount', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center)))]),
         IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showCityPicker()),
         IconButton(icon: const Icon(Icons.person), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))),
       ]),
@@ -86,6 +75,17 @@ class ChatsListScreen extends StatelessWidget {
     await FirebaseFirestore.instance.collection('chats').doc(chatId).delete();
   }
 
+  /// Получает имя собеседника по UID
+  Future<String> _getPartnerName(List<String> participants) async {
+    final otherUid = participants.firstWhere((id) => id != userId, orElse: () => '');
+    if (otherUid.isEmpty) return 'Неизвестно';
+    final doc = await FirebaseFirestore.instance.collection('users').doc(otherUid).get();
+    if (doc.exists) {
+      return doc.data()?['name'] as String? ?? 'Пользователь';
+    }
+    return 'Пользователь';
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Чаты')),
@@ -95,21 +95,21 @@ class ChatsListScreen extends StatelessWidget {
         if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         if (s.hasError) return Center(child: Text('Ошибка: ${s.error}'));
         if (!s.hasData || s.data!.docs.isEmpty) return const Center(child: Text('Нет чатов'));
-        
-        // Сортируем на клиенте — новые сверху
+
         final chats = List.from(s.data!.docs);
         chats.sort((a, b) {
-          final aData = a.data() as Map<String, dynamic>;
-          final bData = b.data() as Map<String, dynamic>;
-          final aTime = aData['lastMessageTime'] as String? ?? '';
-          final bTime = bData['lastMessageTime'] as String? ?? '';
+          final aTime = (a.data() as Map)['lastMessageTime'] as String? ?? '';
+          final bTime = (b.data() as Map)['lastMessageTime'] as String? ?? '';
           return bTime.compareTo(aTime);
         });
-        
+
         return ListView.builder(
           itemCount: chats.length,
           itemBuilder: (_, i) {
             final d = chats[i].data() as Map<String, dynamic>;
+            final participants = List<String>.from(d['participants'] ?? []);
+            final otherUid = participants.firstWhere((id) => id != userId, orElse: () => '');
+
             return Dismissible(
               key: Key(chats[i].id),
               direction: DismissDirection.endToStart,
@@ -117,10 +117,13 @@ class ChatsListScreen extends StatelessWidget {
               confirmDismiss: (_) async => await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Удалить чат?'), content: const Text('Вся переписка будет удалена.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Удалить', style: TextStyle(color: Colors.red)))])) ?? false,
               onDismissed: (_) => _deleteChat(chats[i].id),
               child: ListTile(
-                leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.chat, color: Colors.orange)),
-                title: Text(d['lastMessage'] as String? ?? 'Новый чат'),
-                subtitle: d['lastMessageTime'] != null ? Text(_fmt(d['lastMessageTime'] as String)) : null,
-                trailing: const Icon(Icons.chevron_right),
+                leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.person, color: Colors.orange)),
+                title: FutureBuilder<String>(
+                  future: _getPartnerName(participants),
+                  builder: (_, nameSnap) => Text(nameSnap.data ?? 'Загрузка...'),
+                ),
+                subtitle: Text(d['lastMessage'] as String? ?? '', maxLines: 1),
+                trailing: d['lastMessageTime'] != null ? Text(_fmt(d['lastMessageTime'] as String), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)) : null,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: chats[i].id))),
               ),
             );
