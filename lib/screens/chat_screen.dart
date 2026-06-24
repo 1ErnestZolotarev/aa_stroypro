@@ -35,15 +35,15 @@ class _ChatScreenState extends State<ChatScreen> {
             WidgetsBinding.instance.addPostFrameCallback((_) { if (_sc.hasClients) _sc.animateTo(_sc.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut); });
             return ListView.builder(controller: _sc, itemCount: msgs.length, itemBuilder: (_, i) {
               final d = msgs[i].data() as Map<String, dynamic>;
-              final me = d['senderId'] == u.uid;
+              final me = d['senderId'] == u.phone;
               return Align(alignment: me ? Alignment.centerRight : Alignment.centerLeft, child: Container(margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8), padding: const EdgeInsets.all(12), constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7), decoration: BoxDecoration(color: me ? Colors.orange.shade100 : Colors.grey.shade200, borderRadius: BorderRadius.circular(12)), child: Text(d['text'] ?? '', style: const TextStyle(fontSize: 16))));
             });
           },
         )),
         Padding(padding: const EdgeInsets.all(8), child: Row(children: [
-          Expanded(child: TextField(controller: _msg, decoration: const InputDecoration(hintText: 'Сообщение...', border: OutlineInputBorder()), onSubmitted: (_) => _send(u.uid))),
+          Expanded(child: TextField(controller: _msg, decoration: const InputDecoration(hintText: 'Сообщение...', border: OutlineInputBorder()), onSubmitted: (_) => _send(u.phone))),
           const SizedBox(width: 8),
-          IconButton(icon: const Icon(Icons.send, color: Colors.orange), onPressed: () => _send(u.uid)),
+          IconButton(icon: const Icon(Icons.send, color: Colors.orange), onPressed: () => _send(u.phone)),
         ])),
       ]),
     );

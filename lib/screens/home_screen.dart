@@ -37,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _applyFilters() { context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter, initialLoad: true); }
   void _resetToHome() { final u = context.read<AuthProvider>().user; setState(() { _searchCtrl.clear(); _searchWord = null; _selectedCity = u?.city; _typeFilter = 'all'; _isNearby = true; _showSuggestions = false; }); _applyFilters(); }
   void _toggleNearby() { setState(() { if (_isNearby) { _selectedCity = null; _isNearby = false; } else { final u = context.read<AuthProvider>().user; _selectedCity = u?.city; _isNearby = true; } }); _applyFilters(); }
-  void _openChats() { final u = context.read<AuthProvider>().user; if (u != null) Navigator.push(context, MaterialPageRoute(builder: (_) => ChatsListScreen(userId: u.uid))).then((_) => _listenUnread()); }
+  void _openChats() { final u = context.read<AuthProvider>().user; if (u != null) Navigator.push(context, MaterialPageRoute(builder: (_) => ChatsListScreen(userId: u.phone))).then((_) => _listenUnread()); }
 
   @override
   Widget build(BuildContext context) {

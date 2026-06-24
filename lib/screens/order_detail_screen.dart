@@ -44,7 +44,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     for (var d in s.docs) {
       final participants = List<String>.from(d.data()['participants'] ?? []);
       if (participants.contains(widget.order.authorId) && 
-          participants.contains(u.uid)) {
+          participants.contains(u.phone)) {
         setState(() => _chatId = d.id);
         return;
       }
@@ -60,14 +60,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     for (var d in s.docs) {
       final participants = List<String>.from(d.data()['participants'] ?? []);
       if (participants.contains(widget.order.authorId) && 
-          participants.contains(u.uid)) {
+          participants.contains(u.phone)) {
         return d.id;
       }
     }
     // Создаём новый чат с начальным сообщением
     final ref = FirebaseFirestore.instance.collection('chats').doc();
     await ref.set({
-      'participants': [u.uid, widget.order.authorId],
+      'participants': [u.phone, widget.order.authorId],
       'orderId': widget.order.id,
       'lastMessage': 'Чат создан',
       'lastMessageTime': DateTime.now().toIso8601String(),
