@@ -91,7 +91,7 @@ class ChatsListScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Чаты')),
     body: StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: userId).orderBy('lastMessageTime', descending: true).snapshots(),
+      stream: FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: userId).snapshots(),
       builder: (_, s) {
         if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         if (s.hasError) return Center(child: Text('Ошибка: ${s.error}'));
