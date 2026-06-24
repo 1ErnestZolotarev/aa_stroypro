@@ -1,3 +1,4 @@
+import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -17,6 +18,7 @@ class AuthProvider with ChangeNotifier {
   bool get isBanned => _isBanned;
 
   AuthProvider() {
+    _updateLastSeen();
     _auth.authStateChanges.listen((firebaseUser) async {
       if (firebaseUser != null) {
         try {
@@ -112,3 +114,11 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 }
+
+  Future<void> _updateLastSeen() async {
+    if (_user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(_user!.uid).update({
+        'lastSeen': DateTime.now().toIso8601String(),
+      });
+    }
+  }

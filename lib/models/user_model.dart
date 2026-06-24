@@ -13,6 +13,7 @@ class AppUser {
   final int thanks;
   final int noShows;
   final int complaints;
+  final DateTime? lastSeen; // Когда был онлайн
 
   AppUser({
     required this.uid, required this.name, required this.phone,
@@ -22,7 +23,10 @@ class AppUser {
     this.rating = 0, this.totalRatings = 0,
     this.quickResponses = 0, this.completedOrders = 0,
     this.thanks = 0, this.noShows = 0, this.complaints = 0,
+    this.lastSeen,
   });
+
+  bool get isOnline => lastSeen != null && DateTime.now().difference(lastSeen!).inMinutes < 5;
 
   Map<String, dynamic> toMap() => {
     'uid': uid, 'name': name, 'phone': phone, 'city': city,
@@ -32,6 +36,7 @@ class AppUser {
     'rating': rating, 'totalRatings': totalRatings,
     'quickResponses': quickResponses, 'completedOrders': completedOrders,
     'thanks': thanks, 'noShows': noShows, 'complaints': complaints,
+    'lastSeen': lastSeen?.toIso8601String() ?? '',
   };
 
   factory AppUser.fromMap(Map<String, dynamic> m) => AppUser(
@@ -44,5 +49,6 @@ class AppUser {
     rating: (m['rating'] ?? 0).toDouble(), totalRatings: m['totalRatings'] ?? 0,
     quickResponses: m['quickResponses'] ?? 0, completedOrders: m['completedOrders'] ?? 0,
     thanks: m['thanks'] ?? 0, noShows: m['noShows'] ?? 0, complaints: m['complaints'] ?? 0,
+    lastSeen: m['lastSeen'] != null && m['lastSeen'].toString().isNotEmpty ? DateTime.parse(m['lastSeen']) : null,
   );
 }
