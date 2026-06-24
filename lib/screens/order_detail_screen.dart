@@ -17,20 +17,16 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   String? _chatId;
   bool _loading = false;
-  bool _isOnline = false;
 
   @override
   void initState() {
     super.initState();
     _findChat();
-    _checkOnline();
   }
 
-  Future<void> _checkOnline() async {
     final doc = await FirebaseFirestore.instance.collection('users').doc(widget.order.authorId).get();
     if (doc.exists) {
       final user = AppUser.fromMap(doc.data()!);
-      setState(() => _isOnline = user.isOnline);
     }
   }
 
@@ -84,7 +80,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Автор с индикатором онлайн
           Row(children: [
             Text('Автор: ${widget.order.authorName}', style: const TextStyle(fontSize: 18)),
             const SizedBox(width: 8),
@@ -92,11 +87,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               width: 10, height: 10,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _isOnline ? Colors.green : Colors.grey.shade400,
               ),
             ),
             const SizedBox(width: 4),
-            Text(_isOnline ? 'онлайн' : 'был(а) недавно', style: TextStyle(fontSize: 12, color: _isOnline ? Colors.green : Colors.grey)),
           ]),
           const SizedBox(height: 8),
           Text('Город: ${widget.order.city}'),
@@ -116,10 +109,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ]),
           if (own && _chatId != null) OutlinedButton.icon(icon: const Icon(Icons.chat), label: const Text('Открыть чат'), onPressed: _openChat),
-          // Статус заказа
-          if (own) Row(children: [
-            const Text("Статус: "),
-            DropdownButton<String>(
               value: widget.order.status,
               items: const [
                 DropdownMenuItem(value: "active", child: Text("Активен")),

@@ -16,83 +16,15 @@ class _ChatScreenState extends State<ChatScreen> {
   final _msg = TextEditingController();
   final _firestore = FirestoreService();
   final _sc = ScrollController();
-  bool _quickGiven = false;
-  bool _completed = false;
-  String? _otherUid;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadChatInfo();
-  }
 
   @override
   void dispose() { _msg.dispose(); _sc.dispose(); super.dispose(); }
-
-  Future<void> _loadChatInfo() async {
-    final doc = await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).get();
-    if (!doc.exists) return;
-    final data = doc.data()!;
-    final u = context.read<AuthProvider>().user;
-    final participants = List<String>.from(data['participants'] ?? []);
-    _otherUid = participants.firstWhere((id) => id != u?.uid, orElse: () => '');
-    setState(() {
-      _quickGiven = data['quickResponseGiven'] ?? false;
-      _completed = data['orderCompleted'] ?? false;
-    });
-  }
-
-  Future<void> _giveQuickResponse(String senderId) async {
-    if (_quickGiven || _otherUid == null || _otherUid!.isEmpty) return;
-    final chatDoc = await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).get();
-    final createdAt = chatDoc.data()?['createdAt'] != null ? DateTime.parse(chatDoc.data()!['createdAt']) : DateTime.now();
-    if (DateTime.now().difference(createdAt).inMinutes <= 5) {
-      await _addRating(_otherUid!);
-      await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).update({'quickResponseGiven': true});
-      setState(() => _quickGiven = true);
-    }
-  }
-
-  Future<void> _confirmOrder() async {
-    if (_completed || _otherUid == null || _otherUid!.isEmpty) return;
-    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Подтвердить выполнение?'),
-      content: const Text('Исполнитель получит +1 к рейтингу.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Подтвердить', style: TextStyle(color: Colors.green))),
-      ],
-    ));
-    if (confirm == true) {
-      await _addRating(_otherUid!);
-      await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).update({'orderCompleted': true});
-      setState(() => _completed = true);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Выполнение подтверждено! +1 к рейтингу')));
-    }
-  }
-
-  Future<void> _addRating(String uid) async {
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    if (!doc.exists) return;
-    final data = doc.data()!;
-    final completed = (data['completedOrders'] ?? 0) + 1;
-    final total = (data['totalRatings'] ?? 0) + 1;
-    final rating = total > 0 ? (completed / total * 5.0).clamp(0.0, 5.0) : 0.0;
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'completedOrders': completed,
-      'totalRatings': total,
-      'rating': double.parse(rating.toStringAsFixed(1)),
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final u = context.read<AuthProvider>().user!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Чат'), actions: [
-        if (!_completed && _otherUid != null && _otherUid!.isNotEmpty)
-          TextButton.icon(onPressed: _confirmOrder, icon: const Icon(Icons.check_circle, color: Colors.green), label: const Text('Выполнено')),
-      ]),
+      appBar: AppBar(title: const Text('Чат')),
       body: Column(children: [
         Expanded(child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('chats').doc(widget.chatId).collection('messages').orderBy('timestamp', descending: false).snapshots(),
@@ -121,6 +53,5 @@ class _ChatScreenState extends State<ChatScreen> {
     final t = _msg.text.trim(); if (t.isEmpty) return;
     await _firestore.sendMessage(widget.chatId, Message(id: DateTime.now().millisecondsSinceEpoch.toString(), senderId: uid, text: t, timestamp: DateTime.now()));
     _msg.clear();
-    await _giveQuickResponse(uid);
   }
 }

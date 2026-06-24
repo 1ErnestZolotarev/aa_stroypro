@@ -27,12 +27,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(title: const Text('Профиль'), actions: [if(!_editing) IconButton(icon: const Icon(Icons.edit), onPressed: () => setState(() => _editing = true)) else IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _editing = false))]),
       body: SingleChildScrollView(padding: const EdgeInsets.all(24), child: Form(key: _f, child: Column(children: [
         CircleAvatar(radius:50, backgroundColor: Colors.orange.shade100, child: Icon(Icons.person, size:50, color: Colors.orange.shade700)),
-        const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.star, color: Colors.amber, size: 20), const SizedBox(width: 4),
-          Text(u.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 4), Text('(${u.totalRatings})', style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
-        ]),
         const SizedBox(height: 16),
         TextFormField(controller: _name, decoration: const InputDecoration(labelText:'Имя',prefixIcon:Icon(Icons.person)), enabled: _editing, validator: (v)=>v!.isEmpty?'Введите имя':null), const SizedBox(height:16),
         TextFormField(controller: _phone, decoration: const InputDecoration(labelText:'Телефон',prefixIcon:Icon(Icons.phone)), keyboardType: TextInputType.phone, enabled: _editing, validator: (v)=>v!.isEmpty?'Введите телефон':null), const SizedBox(height:16),
