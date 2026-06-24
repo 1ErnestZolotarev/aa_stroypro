@@ -64,12 +64,12 @@ class _LoginScreenState extends State<LoginScreen> {
         )),
         const SizedBox(height: 32),
         GestureDetector(
-          onTap: () => _openUrl('https://telegra.ph/Politika-konfidencialnosti-06-23'),
+          onTap: () => _openUrl('https://docs.google.com/document/d/16EVLtV3598kpLhCRE8U03EURlXDU5EyNdUB-QT5Y0HI/edit?usp=sharing'),
           child: Text('Политика конфиденциальности', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
         ),
         const SizedBox(height: 6),
         GestureDetector(
-          onTap: () => _openUrl('https://telegra.ph/Polzovatelskoe-soglashenie-06-23'),
+          onTap: () => _openUrl('https://docs.google.com/document/d/1Xiiy-_FHSjNv-qcDvibxkA_wFEkTP7mOr4dqOFzZ1DY/edit?usp=sharing'),
           child: Text('Пользовательское соглашение', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, decoration: TextDecoration.underline)),
         ),
       ])))),
