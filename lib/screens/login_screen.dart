@@ -1,8 +1,9 @@
-import "dart:async";
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 
@@ -18,12 +19,23 @@ class _LoginScreenState extends State<LoginScreen> {
   String _role = 'customer';
   bool _needsPassword = false;
   String? _existingEmail;
-  bool _checkingPhone = false;   // ← проверка идёт
+  bool _checkingPhone = false;
+  Timer? _debounceTimer;
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _name.dispose();
+    _phone.dispose();
+    _city.dispose();
+    _password.dispose();
+    super.dispose();
+  }
 
   Future<void> _checkPhone() async {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      final phone = _phone.text.replaceAll(RegExp(r"\D"), "");
+      final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
       if (phone.length < 11) {
         setState(() { _needsPassword = false; _existingEmail = null; _checkingPhone = false; });
         return;
@@ -33,8 +45,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final result = await AuthService().checkPhone(_phone.text);
         if (mounted) {
           setState(() {
-            _needsPassword = result["needsPassword"] as bool;
-            _existingEmail = result["email"] as String?;
+            _needsPassword = result['needsPassword'] as bool;
+            _existingEmail = result['email'] as String?;
           });
         }
       } finally {
@@ -55,6 +67,29 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await auth.signInWithPhone(name: _name.text, phone: _phone.text, city: _city.text, role: _role);
       }
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    if (_existingEmail == null) return;
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: _existingEmail!);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Письмо для сброса пароля отправлено')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось открыть ссылку')));
     }
   }
 
@@ -91,6 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
           Text('Введите пароль для входа', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 12),
           TextFormField(controller: _password, obscureText: true, decoration: InputDecoration(labelText: 'Пароль', prefixIcon: const Icon(Icons.lock, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), filled: true, fillColor: Colors.white), validator: (v) => v!.isEmpty ? 'Введите пароль' : null),
+          const SizedBox(height: 8),
+          TextButton(onPressed: _forgotPassword, child: const Text('Забыли пароль?')),
         ],
         const SizedBox(height: 24),
         SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
@@ -120,20 +157,14 @@ class _LoginScreenState extends State<LoginScreen> {
       Container(height: 2, color: _role==role?Colors.orange:Colors.transparent),
     ]),
   );
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        // Пробуем открыть без специального режима
-        await launchUrl(uri);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Не удалось открыть ссылку: $e")),
-      );
-    }
+}
+
+class CapitalizeFirstLetterFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue old, TextEditingValue now) {
+    if (now.text.isEmpty) return now;
+    final words = now.text.split(' ').where((w) => w.isNotEmpty).map((w) => w.length==1 ? w.toUpperCase() : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}').join(' ');
+    return TextEditingValue(text: words, selection: TextSelection.collapsed(offset: words.length));
   }
 }
 
