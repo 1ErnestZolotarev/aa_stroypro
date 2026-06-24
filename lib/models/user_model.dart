@@ -19,7 +19,7 @@ class AppUser {
     required this.role,
     this.avatarUrl,
     this.isPro = false,
-    this.ordersLimit = 3,
+    this.ordersLimit = 10,
     this.isBanned = false,
     this.bannedReason,
     required this.createdAt,
