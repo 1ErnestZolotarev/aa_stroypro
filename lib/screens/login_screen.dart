@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart' as OurAuth;
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,6 +41,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
+    if (phone.length < 11) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите номер телефона')));
+      return;
+    }
+    try {
+      final email = await AuthService().getEmailByPhone(_phone.text);
+      if (email == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Пользователь не найден')));
+        return;
+      }
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Письмо для сброса пароля отправлено')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final a = context.watch<OurAuth.AuthProvider>();
@@ -58,6 +79,14 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _password,
             obscureText: true,
             decoration: const InputDecoration(labelText: 'Пароль', prefixIcon: Icon(Icons.lock)),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _forgotPassword,
+              child: const Text('Забыли пароль?'),
+            ),
           ),
         ],
         const SizedBox(height: 24),
