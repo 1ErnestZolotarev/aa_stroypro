@@ -5,7 +5,8 @@ class AppUser {
   final String role;
   final String? uid;
   final bool isAdmin;
-  final DateTime? bannedUntil;   // <-- новое поле
+  final DateTime? bannedUntil;
+  final DateTime? lastSeen;   // новое поле
   final DateTime createdAt;
 
   AppUser({
@@ -16,12 +17,18 @@ class AppUser {
     this.uid,
     this.isAdmin = false,
     this.bannedUntil,
+    this.lastSeen,
     required this.createdAt,
   });
 
   bool get isBanned {
     if (bannedUntil == null) return false;
     return DateTime.now().isBefore(bannedUntil!);
+  }
+
+  bool get isOnline {
+    if (lastSeen == null) return false;
+    return DateTime.now().difference(lastSeen!) < const Duration(minutes: 5);
   }
 
   Map<String, dynamic> toMap() => {
@@ -32,6 +39,7 @@ class AppUser {
         'uid': uid ?? '',
         'isAdmin': isAdmin,
         'bannedUntil': bannedUntil?.toIso8601String() ?? '',
+        'lastSeen': lastSeen?.toIso8601String() ?? '',
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -44,6 +52,9 @@ class AppUser {
         isAdmin: m['isAdmin'] ?? false,
         bannedUntil: m['bannedUntil'] != null && m['bannedUntil'].toString().isNotEmpty
             ? DateTime.parse(m['bannedUntil'])
+            : null,
+        lastSeen: m['lastSeen'] != null && m['lastSeen'].toString().isNotEmpty
+            ? DateTime.parse(m['lastSeen'])
             : null,
         createdAt: m['createdAt'] != null
             ? DateTime.parse(m['createdAt'])
