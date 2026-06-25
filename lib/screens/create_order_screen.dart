@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
@@ -20,7 +21,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   late String _type;
   bool _publishing = false;
   bool get _editing => widget.existingOrder != null;
-
   bool get _isAuthorized => context.read<OurAuth.AuthProvider>().user != null;
 
   @override
@@ -40,7 +40,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   @override
   void dispose() {
-    _title.dispose(); _desc.dispose(); _budget.dispose(); _city.dispose(); _addr.dispose(); _nameCtrl.dispose(); _phoneCtrl.dispose();
+    _title.dispose(); _desc.dispose(); _budget.dispose(); _city.dispose(); _addr.dispose();
+    _nameCtrl.dispose(); _phoneCtrl.dispose();
     super.dispose();
   }
 
@@ -54,7 +55,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         if (!_isAuthorized) ...[
           TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Ваше имя'), validator: (v) => v!.isEmpty ? 'Введите имя' : null),
           const SizedBox(height: 8),
-          TextFormField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Телефон'), keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty ? 'Введите телефон' : null),
+          TextFormField(
+            controller: _phoneCtrl,
+            decoration: const InputDecoration(labelText: 'Телефон'),
+            keyboardType: TextInputType.phone,
+            inputFormatters: [PhoneInputFormatter()],
+            validator: (v) => v!.isEmpty ? 'Введите телефон' : null,
+          ),
           const SizedBox(height: 16),
         ],
         TextFormField(controller: _title, decoration: const InputDecoration(labelText: 'Название работы'), validator: (v) => v!.isEmpty ? 'Обязательно' : null),
@@ -105,5 +112,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Future<void> _delete() async {
     final c = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Удалить?'), content: const Text('Нельзя отменить.'), actions: [TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Отмена')),TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Удалить',style:TextStyle(color:Colors.red)))]));
     if (c == true && mounted) { await FirestoreService().deleteOrder(widget.existingOrder!.id); Navigator.pop(context); }
+  }
+}
+
+// Форматтер телефона
+class PhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue old, TextEditingValue now) {
+    final digits = now.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return const TextEditingValue(text: '');
+    String f = '+7 ';
+    if (digits.length > 1) f += '(${digits.substring(1, digits.length > 4 ? 4 : digits.length)}';
+    if (digits.length > 4) f += ') ${digits.substring(4, digits.length > 7 ? 7 : digits.length)}';
+    if (digits.length > 7) f += '-${digits.substring(7, digits.length > 9 ? 9 : digits.length)}';
+    if (digits.length > 9) f += '-${digits.substring(9, digits.length > 11 ? 11 : digits.length)}';
+    return TextEditingValue(text: f, selection: TextSelection.collapsed(offset: f.length));
   }
 }
