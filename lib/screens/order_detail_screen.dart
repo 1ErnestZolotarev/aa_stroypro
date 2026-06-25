@@ -54,6 +54,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<String> _createChat() async {
     final u = context.read<OurAuth.AuthProvider>().user!;
+    // Ищем существующий чат
     final s = await FirebaseFirestore.instance.collection('chats')
         .where('participants', arrayContains: u.phone)
         .get();
@@ -64,9 +65,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return d.id;
       }
     }
+    // Создаём новый чат с двумя массивами
     final ref = FirebaseFirestore.instance.collection('chats').doc();
     await ref.set({
-      'participants': [u.phone, widget.order.authorId],
+      'participants': [u.phone, widget.order.authorId],          // телефоны (для совместимости)
+      'participantUids': [u.uid ?? '', widget.order.authorUid ?? ''], // UID для проверки прав
       'orderId': widget.order.id,
       'lastMessage': 'Чат создан',
       'lastMessageTime': DateTime.now().toIso8601String(),
