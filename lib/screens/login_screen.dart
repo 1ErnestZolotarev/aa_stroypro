@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart' as OurAuth;
 import '../services/auth_service.dart';
 
@@ -48,9 +47,12 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
       return;
     }
-    final auth = context.read<OurAuth.AuthProvider>();
-    await auth.signIn(_phone.text, _password.text);
-    if (mounted && auth.user != null) Navigator.pop(context);
+    try {
+      await context.read<OurAuth.AuthProvider>().signIn(_phone.text, _password.text);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    }
   }
 
   @override

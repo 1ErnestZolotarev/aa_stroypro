@@ -31,14 +31,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    _name.dispose();
-    _city.dispose();
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
+    _name.dispose(); _city.dispose(); _emailCtrl.dispose(); _passCtrl.dispose();
     super.dispose();
   }
 
-  /// Показать диалог привязки email.
   Future<void> _linkEmail() async {
     final phone = context.read<AuthProvider>().currentPhone;
     if (phone == null) return;
@@ -47,21 +43,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Привязать email'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _emailCtrl,
-              decoration: const InputDecoration(labelText: 'Новый email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Ваш пароль'),
-            ),
-          ],
-        ),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Новый email'), keyboardType: TextInputType.emailAddress),
+          TextField(controller: _passCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Ваш пароль')),
+        ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
           ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Привязать')),
@@ -77,14 +62,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Email обновлён. Проверьте почту для подтверждения.')),
         );
-        setState(() {}); // обновить UI
+        setState(() {});
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
-  /// Получить email пользователя (реальный или фиктивный).
   Future<String?> _getEmail() async {
     final phone = context.read<AuthProvider>().currentPhone;
     if (phone == null) return null;
@@ -98,129 +82,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (u == null) return const Scaffold(body: Center(child: Text('Пользователь не найден')));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Профиль'),
-        actions: [
-          if (!_editing)
-            IconButton(icon: const Icon(Icons.edit), onPressed: () => setState(() => _editing = true))
-          else
-            IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _editing = false)),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _f,
-          child: Column(
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.orange.shade100,
-                child: Icon(Icons.person, size: 50, color: Colors.orange.shade700),
-              ),
-              const SizedBox(height: 16),
-              // Отображение email
-              FutureBuilder<String?>(
-                future: _getEmail(),
-                builder: (_, snap) {
-                  final email = snap.data ?? '';
-                  final isReal = email.isNotEmpty && !email.endsWith('@aa-stroypro.local');
-                  return ListTile(
-                    leading: const Icon(Icons.email),
-                    title: Text(isReal ? email : 'Email не привязан'),
-                    subtitle: isReal ? const Text('Привязан') : const Text('Нажмите, чтобы привязать'),
-                    trailing: isReal ? null : TextButton(onPressed: _linkEmail, child: const Text('Привязать')),
-                  );
-                },
-              ),
-              const Divider(),
-              TextFormField(
-                controller: _name,
-                decoration: const InputDecoration(labelText: 'Имя', prefixIcon: Icon(Icons.person)),
-                enabled: _editing,
-                validator: (v) => v!.isEmpty ? 'Введите имя' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _city,
-                decoration: const InputDecoration(labelText: 'Город', prefixIcon: Icon(Icons.location_city)),
-                enabled: _editing,
-                validator: (v) => v!.isEmpty ? 'Введите город' : null,
-              ),
-              const SizedBox(height: 16),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'customer', label: Text('Заказчик')),
-                  ButtonSegment(value: 'executor', label: Text('Исполнитель')),
-                ],
-                selected: {_role},
-                onSelectionChanged: _editing ? (s) => setState(() => _role = s.first) : null,
-              ),
-              const SizedBox(height: 32),
-              if (_editing)
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.save),
-                  label: const Text('Сохранить'),
-                  onPressed: () async {
-                    if (_f.currentState!.validate()) {
-                      await a.updateProfile(name: _name.text, city: _city.text, role: _role);
-                      setState(() => _editing = false);
-                    }
-                  },
-                ),
-              const Divider(),
-              const Padding(
-                padding: EdgeInsets.all(8),
-                child: Text('Мои объявления', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-              FutureBuilder<QuerySnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('orders')
-                    .where('authorId', isEqualTo: u.phone)
-                    .get(),
-                builder: (_, s) {
-                  if (s.connectionState == ConnectionState.waiting)
-                    return const Center(child: CircularProgressIndicator());
-                  if (s.hasError)
-                    return Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text('Ошибка: ${s.error}', style: const TextStyle(color: Colors.red)),
-                    );
-                  if (!s.hasData || s.data!.docs.isEmpty)
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('У вас пока нет объявлений', style: TextStyle(color: Colors.grey)),
-                    );
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: s.data!.docs.length,
-                    itemBuilder: (_, i) {
-                      final o = ServiceOrder.fromMap(
-                          s.data!.docs[i].id, s.data!.docs[i].data() as Map<String, dynamic>);
-                      return Card(
-                        child: ListTile(
-                          title: Text(o.title, maxLines: 1),
-                          subtitle: Text('${o.city} • ${o.budget} ₽'),
-                          trailing: Chip(label: Text(o.type == 'offer' ? 'Исполнитель' : 'Заказчик')),
-                          onTap: () => Navigator.push(
-                              context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: o))),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-              const Divider(),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text('Выйти'),
-                onPressed: () => a.logout(),
-              ),
-            ],
-          ),
+      appBar: AppBar(title: const Text('Профиль'), actions: [
+        if (!_editing) IconButton(icon: const Icon(Icons.edit), onPressed: () => setState(() => _editing = true))
+        else IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _editing = false)),
+      ]),
+      body: SingleChildScrollView(padding: const EdgeInsets.all(24), child: Form(key: _f, child: Column(children: [
+        CircleAvatar(radius:50, backgroundColor: Colors.orange.shade100, child: Icon(Icons.person, size:50, color: Colors.orange.shade700)),
+        const SizedBox(height: 16),
+        FutureBuilder<String?>(
+          future: _getEmail(),
+          builder: (_, snap) {
+            final email = snap.data ?? '';
+            final isReal = email.isNotEmpty && !email.endsWith('@aa-stroypro.local');
+            return ListTile(
+              leading: const Icon(Icons.email),
+              title: Text(isReal ? email : 'Email не привязан'),
+              subtitle: isReal ? const Text('Привязан') : const Text('Нажмите, чтобы привязать'),
+              trailing: isReal ? null : TextButton(onPressed: _linkEmail, child: const Text('Привязать')),
+            );
+          },
         ),
-      ),
+        const Divider(),
+        TextFormField(controller: _name, decoration: const InputDecoration(labelText:'Имя',prefixIcon:Icon(Icons.person)), enabled: _editing, validator: (v)=>v!.isEmpty?'Введите имя':null),
+        const SizedBox(height:16),
+        TextFormField(controller: _city, decoration: const InputDecoration(labelText:'Город',prefixIcon:Icon(Icons.location_city)), enabled: _editing, validator: (v)=>v!.isEmpty?'Введите город':null),
+        const SizedBox(height:16),
+        SegmentedButton<String>(segments: const [ButtonSegment(value:'customer',label:Text('Заказчик')),ButtonSegment(value:'executor',label:Text('Исполнитель'))], selected: {_role}, onSelectionChanged: _editing?(s)=>setState(()=>_role=s.first):null),
+        const SizedBox(height:32),
+        if (_editing) ElevatedButton.icon(icon: const Icon(Icons.save), label: const Text('Сохранить'), onPressed: () async { if(_f.currentState!.validate()){ await a.updateProfile(name:_name.text, city:_city.text, role:_role); setState(()=>_editing=false); } }),
+        const Divider(), const Padding(padding: EdgeInsets.all(8), child: Text('Мои объявления', style: TextStyle(fontSize:18, fontWeight: FontWeight.bold))),
+        FutureBuilder<QuerySnapshot>(future: FirebaseFirestore.instance.collection('orders').where('authorId', isEqualTo: u.phone).get(), builder: (_,s) {
+          if (s.connectionState==ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (s.hasError) return Padding(padding: const EdgeInsets.all(16), child: Text('Ошибка: ${s.error}', style: const TextStyle(color: Colors.red)));
+          if (!s.hasData||s.data!.docs.isEmpty) return const Padding(padding: EdgeInsets.all(16), child: Text('У вас пока нет объявлений', style: TextStyle(color: Colors.grey)));
+          return ListView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: s.data!.docs.length, itemBuilder: (_,i) {
+            final o = ServiceOrder.fromMap(s.data!.docs[i].id, s.data!.docs[i].data() as Map<String, dynamic>);
+            return Card(child: ListTile(title: Text(o.title, maxLines:1), subtitle: Text('${o.city} • ${o.budget} ₽'), trailing: Chip(label: Text(o.type=='offer'?'Исполнитель':'Заказчик')), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: o)))));
+          });
+        }),
+        const Divider(),
+        OutlinedButton.icon(icon: const Icon(Icons.logout, color: Colors.red), label: const Text('Выйти'), onPressed: () => a.logout()),
+      ]))),
     );
   }
 }

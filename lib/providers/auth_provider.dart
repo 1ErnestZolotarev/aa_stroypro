@@ -26,10 +26,22 @@ class AuthProvider with ChangeNotifier {
   }) async {
     _loading = true; _error = null; notifyListeners();
     try {
-      _user = await _auth.register(phone: phone, name: name, city: city, role: role, email: email, password: password);
+      _user = await _auth.register(
+        phone: phone,
+        name: name,
+        city: city,
+        role: role,
+        email: email,
+        password: password,
+      );
       _currentPhone = phone;
-    } catch (e) { _error = e.toString(); }
-    _loading = false; notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   /// Вход по номеру и паролю.
@@ -38,8 +50,14 @@ class AuthProvider with ChangeNotifier {
     try {
       _user = await _auth.signIn(phone, password);
       _currentPhone = phone;
-    } catch (e) { _error = e.toString(); }
-    _loading = false; notifyListeners();
+      if (_user == null) throw Exception('Неверный пароль или номер');
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   /// Обновление профиля.
@@ -53,10 +71,21 @@ class AuthProvider with ChangeNotifier {
         if (city != null) 'city': city,
         if (role != null) 'role': role,
       });
-      _user = AppUser(phone: _currentPhone!, name: name ?? _user!.name, city: city ?? _user!.city, role: role ?? _user!.role, createdAt: _user!.createdAt);
+      _user = AppUser(
+        phone: _currentPhone!,
+        name: name ?? _user!.name,
+        city: city ?? _user!.city,
+        role: role ?? _user!.role,
+        createdAt: _user!.createdAt,
+      );
     } catch (e) { _error = e.toString(); }
     _loading = false; notifyListeners();
   }
 
-  Future<void> logout() async { await _auth.signOut(); _user = null; _currentPhone = null; notifyListeners(); }
+  Future<void> logout() async {
+    await _auth.signOut();
+    _user = null;
+    _currentPhone = null;
+    notifyListeners();
+  }
 }

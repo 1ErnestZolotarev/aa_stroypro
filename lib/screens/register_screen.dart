@@ -38,7 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Регистрация успешна!')),
         );
-        // Возвращаемся на стартовый экран, который уже покажет главный (пользователь авторизован)
+        // Возвращаемся на стартовый экран, который теперь покажет главный
         Navigator.popUntil(context, (route) => route.isFirst);
       }
     } catch (e) {
