@@ -7,6 +7,7 @@ import 'providers/order_provider.dart';
 import 'screens/start_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/create_order_screen.dart';
 import 'screens/profile_screen.dart';

@@ -15,24 +15,34 @@ class AuthProvider with ChangeNotifier {
   String? get error => _error;
   String? get currentPhone => _currentPhone;
 
-  Future<void> signInWithPhone({required String name, required String phone, required String city, required String role}) async {
+  /// Регистрация.
+  Future<void> register({
+    required String phone,
+    required String name,
+    required String city,
+    required String role,
+    String? email,
+    required String password,
+  }) async {
     _loading = true; _error = null; notifyListeners();
     try {
-      _user = await _auth.signInWithPhone(name: name, phone: phone, city: city, role: role);
+      _user = await _auth.register(phone: phone, name: name, city: city, role: role, email: email, password: password);
       _currentPhone = phone;
     } catch (e) { _error = e.toString(); }
     _loading = false; notifyListeners();
   }
 
-  Future<void> signInWithEmail(String email, String password) async {
+  /// Вход по номеру и паролю.
+  Future<void> signIn(String phone, String password) async {
     _loading = true; _error = null; notifyListeners();
     try {
-      _user = await _auth.signInWithEmail(email, password);
-      _currentPhone = _user?.phone;
+      _user = await _auth.signIn(phone, password);
+      _currentPhone = phone;
     } catch (e) { _error = e.toString(); }
     _loading = false; notifyListeners();
   }
 
+  /// Обновление профиля.
   Future<void> updateProfile({String? name, String? city, String? role}) async {
     if (_user == null || _currentPhone == null) return;
     _loading = true; notifyListeners();
