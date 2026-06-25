@@ -55,9 +55,7 @@ class AuthService {
       }
     }
 
-    // Сохраняем uid текущего пользователя
     final currentUid = _auth.currentUser?.uid;
-
     final userRef = _firestore.collection('users').doc(docId);
     final newUser = AppUser(
       phone: phone,
@@ -81,8 +79,33 @@ class AuthService {
     await _auth.signInWithEmailAndPassword(email: email, password: password);
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     final doc = await _firestore.collection('users').doc(docId).get();
-    if (doc.exists) return AppUser.fromMap(doc.data()!);
-    return null;
+    if (!doc.exists) return null;
+    final user = AppUser.fromMap(doc.data()!);
+    if (user.isBanned) {
+      throw Exception('Ваш аккаунт заблокирован до ${_formatDateTime(user.bannedUntil!)}');
+    }
+    return user;
+  }
+
+  String _formatDateTime(DateTime dt) {
+    return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Забанить пользователя на указанное количество часов (админ).
+  Future<void> banUser(String phone, int hours) async {
+    final docId = phone.replaceAll(RegExp(r'\D'), '');
+    final bannedUntil = DateTime.now().add(Duration(hours: hours));
+    await _firestore.collection('users').doc(docId).update({
+      'bannedUntil': bannedUntil.toIso8601String(),
+    });
+  }
+
+  /// Разбанить пользователя (админ).
+  Future<void> unbanUser(String phone) async {
+    final docId = phone.replaceAll(RegExp(r'\D'), '');
+    await _firestore.collection('users').doc(docId).update({
+      'bannedUntil': '',
+    });
   }
 
   Future<void> signOut() => _auth.signOut();
@@ -97,11 +120,9 @@ class AuthService {
   Future<void> updateEmail(String phone, String newEmail, String password) async {
     final oldEmail = await getEmailByPhone(phone);
     if (oldEmail == null) throw Exception('Пользователь не найден');
-
     final credential = EmailAuthProvider.credential(email: oldEmail, password: password);
     await _auth.currentUser!.reauthenticateWithCredential(credential);
     await _auth.currentUser!.verifyBeforeUpdateEmail(newEmail);
-
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     await _firestore.collection('users').doc(docId).update({'email': newEmail});
   }

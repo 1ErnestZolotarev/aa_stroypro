@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await context.read<OurAuth.AuthProvider>().signIn(_phone.text, _password.text);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
