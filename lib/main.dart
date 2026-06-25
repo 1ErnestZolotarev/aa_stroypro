@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';   // <-- новый импорт
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart' as OurAuth;
@@ -14,7 +15,13 @@ import 'widgets/adaptive_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try { await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform); } catch (_) {}
+
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    // Включаем сохранение сессии (запоминание входа)
+    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  } catch (_) {}
+
   runApp(const MyApp());
 }
 
