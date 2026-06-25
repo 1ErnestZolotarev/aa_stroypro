@@ -25,12 +25,17 @@ class _LoginScreenState extends State<LoginScreen> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () async {
       final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
-      if (digits.length < 11) { setState(() => _phoneExists = false); return; }
+      if (digits.length < 11) {
+        setState(() { _phoneExists = false; _checking = false; });
+        return;
+      }
       setState(() => _checking = true);
       try {
         final exists = await AuthService().phoneExists(_phone.text);
         if (mounted) setState(() => _phoneExists = exists);
-      } finally { if (mounted) setState(() => _checking = false); }
+      } finally {
+        if (mounted) setState(() => _checking = false);
+      }
     });
   }
 

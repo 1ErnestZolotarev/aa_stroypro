@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart' as OurAuth;
-import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,13 +11,13 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _f = GlobalKey<FormState>();
-  final _name = TextEditingController(), _phone = TextEditingController(), _city = TextEditingController(), _email = TextEditingController(), _password = TextEditingController();
+  final _name = TextEditingController(), _phone = TextEditingController(), _city = TextEditingController(), _password = TextEditingController(), _email = TextEditingController();
   String _role = 'customer';
   bool _loading = false;
 
   @override
   void dispose() {
-    _name.dispose(); _phone.dispose(); _city.dispose(); _email.dispose(); _password.dispose();
+    _name.dispose(); _phone.dispose(); _city.dispose(); _password.dispose(); _email.dispose();
     super.dispose();
   }
 
@@ -37,9 +36,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Регистрация прошла успешно! Теперь войдите.')),
+          const SnackBar(content: Text('Регистрация успешна!')),
         );
-        Navigator.pop(context); // возврат на стартовый экран
+        // Возвращаемся на стартовый экран, который уже покажет главный (пользователь авторизован)
+        Navigator.popUntil(context, (route) => route.isFirst);
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
