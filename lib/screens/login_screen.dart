@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart' as OurAuth;
-import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,36 +12,21 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController(), _password = TextEditingController();
-  bool _phoneExists = false;
-  bool _checking = false;
+  bool _showPassword = false;
   Timer? _debounce;
 
   @override
   void dispose() { _debounce?.cancel(); _phone.dispose(); _password.dispose(); super.dispose(); }
 
-  Future<void> _checkPhone() async {
+  void _onPhoneChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
+    _debounce = Timer(const Duration(milliseconds: 400), () {
       final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
-      if (digits.length < 11) {
-        setState(() { _phoneExists = false; _checking = false; });
-        return;
-      }
-      setState(() => _checking = true);
-      try {
-        final exists = await AuthService().phoneExists(_phone.text);
-        if (mounted) setState(() => _phoneExists = exists);
-      } finally {
-        if (mounted) setState(() => _checking = false);
-      }
+      setState(() => _showPassword = digits.length >= 11);
     });
   }
 
   Future<void> _submit() async {
-    if (!_phoneExists) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Номер не зарегистрирован')));
-      return;
-    }
     if (_password.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите пароль')));
       return;
@@ -66,16 +50,19 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: const InputDecoration(labelText: 'Телефон', prefixIcon: Icon(Icons.phone)),
           keyboardType: TextInputType.phone,
           inputFormatters: [PhoneInputFormatter()],
-          onChanged: (_) => _checkPhone(),
+          onChanged: (_) => _onPhoneChanged(),
         ),
-        if (_checking) const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()),
-        if (_phoneExists && !_checking) ...[
+        if (_showPassword) ...[
           const SizedBox(height: 12),
-          TextFormField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Пароль', prefixIcon: Icon(Icons.lock))),
+          TextFormField(
+            controller: _password,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Пароль', prefixIcon: Icon(Icons.lock)),
+          ),
         ],
         const SizedBox(height: 24),
         SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
-          onPressed: (a.loading || _checking) ? null : _submit,
+          onPressed: (a.loading || !_showPassword) ? null : _submit,
           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           child: a.loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Войти', style: TextStyle(fontSize: 16)),
         )),
