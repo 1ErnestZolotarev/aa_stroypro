@@ -34,9 +34,13 @@ class OrderProvider with ChangeNotifier {
 
   void _applyLocalFilters({String? city, String? searchWord, String? typeFilter}) {
     _filteredOrders = _allOrders.where((o) {
-      if (city != null && city.isNotEmpty && o.city != city) return false;
+      // Безопасное сравнение городов
+      if (city != null && city.isNotEmpty) {
+        if (o.city == null) return false;
+        if (o.city!.trim().toLowerCase() != city.trim().toLowerCase()) return false;
+      }
       if (typeFilter != null && typeFilter != 'all' && o.type != typeFilter) return false;
-      if (searchWord != null && searchWord.isNotEmpty && !SearchService.matchesSearch(o.title, o.description, o.keywords, o.city, searchWord)) return false;
+      if (searchWord != null && searchWord.isNotEmpty && !SearchService.matchesSearch(o.title, o.description, o.keywords, o.city ?? '', searchWord)) return false;
       return true;
     }).toList();
   }

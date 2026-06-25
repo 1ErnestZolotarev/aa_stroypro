@@ -60,9 +60,11 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       await auth.signInWithEmail(_existingEmail!, _password.text);
+      if (mounted) Navigator.pop(context);
     } else {
       // Номер существует, но без email – просто входим
       await auth.signInWithPhone(name: '', phone: _phone.text, city: '', role: 'customer');
+      if (mounted) Navigator.pop(context);
     }
   }
 
