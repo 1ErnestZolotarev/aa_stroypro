@@ -55,6 +55,9 @@ class AuthService {
       }
     }
 
+    // Сохраняем номер телефона в displayName
+    await _auth.currentUser?.updateDisplayName(phone);
+
     final currentUid = _auth.currentUser?.uid;
     final userRef = _firestore.collection('users').doc(docId);
     final newUser = AppUser(
@@ -77,6 +80,10 @@ class AuthService {
     final email = await getEmailByPhone(phone);
     if (email == null) return null;
     await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+    // Сохраняем номер телефона в displayName
+    await _auth.currentUser?.updateDisplayName(phone);
+
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     final doc = await _firestore.collection('users').doc(docId).get();
     if (!doc.exists) return null;
@@ -91,7 +98,6 @@ class AuthService {
     return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
-  /// Забанить пользователя на указанное количество часов (админ).
   Future<void> banUser(String phone, int hours) async {
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     final bannedUntil = DateTime.now().add(Duration(hours: hours));
@@ -100,7 +106,6 @@ class AuthService {
     });
   }
 
-  /// Разбанить пользователя (админ).
   Future<void> unbanUser(String phone) async {
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     await _firestore.collection('users').doc(docId).update({

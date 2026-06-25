@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -15,7 +16,24 @@ class AuthProvider with ChangeNotifier {
   String? get error => _error;
   String? get currentPhone => _currentPhone;
 
-  /// Регистрация.
+  AuthProvider() {
+    // Слушаем изменения состояния аутентификации
+    FirebaseAuth.instance.authStateChanges().listen((firebaseUser) async {
+      if (firebaseUser != null) {
+        // Пользователь вошёл – берём номер из displayName
+        final phone = firebaseUser.displayName;
+        if (phone != null && phone.isNotEmpty) {
+          _user = await _auth.getCurrentUser(phone);
+          _currentPhone = phone;
+        }
+      } else {
+        _user = null;
+        _currentPhone = null;
+      }
+      notifyListeners();
+    });
+  }
+
   Future<void> register({
     required String phone,
     required String name,
@@ -26,41 +44,21 @@ class AuthProvider with ChangeNotifier {
   }) async {
     _loading = true; _error = null; notifyListeners();
     try {
-      _user = await _auth.register(
-        phone: phone,
-        name: name,
-        city: city,
-        role: role,
-        email: email,
-        password: password,
-      );
+      _user = await _auth.register(phone: phone, name: name, city: city, role: role, email: email, password: password);
       _currentPhone = phone;
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
+    } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  /// Вход по номеру и паролю.
   Future<void> signIn(String phone, String password) async {
     _loading = true; _error = null; notifyListeners();
     try {
       _user = await _auth.signIn(phone, password);
       _currentPhone = phone;
-      if (_user == null) throw Exception('Неверный пароль или номер');
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
+    } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  /// Обновление профиля.
   Future<void> updateProfile({String? name, String? city, String? role}) async {
     if (_user == null || _currentPhone == null) return;
     _loading = true; notifyListeners();
@@ -71,13 +69,7 @@ class AuthProvider with ChangeNotifier {
         if (city != null) 'city': city,
         if (role != null) 'role': role,
       });
-      _user = AppUser(
-        phone: _currentPhone!,
-        name: name ?? _user!.name,
-        city: city ?? _user!.city,
-        role: role ?? _user!.role,
-        createdAt: _user!.createdAt,
-      );
+      _user = AppUser(phone: _currentPhone!, name: name ?? _user!.name, city: city ?? _user!.city, role: role ?? _user!.role, uid: _user!.uid, isAdmin: _user!.isAdmin, bannedUntil: _user!.bannedUntil, lastSeen: _user!.lastSeen, createdAt: _user!.createdAt);
     } catch (e) { _error = e.toString(); }
     _loading = false; notifyListeners();
   }
