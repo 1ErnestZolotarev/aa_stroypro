@@ -28,11 +28,15 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   Timer? _onlineTimer;
+  bool _timerStarted = false;
 
   @override
-  void initState() {
-    super.initState();
-    _startOnlineTimer();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_timerStarted) {
+      _startOnlineTimer();
+      _timerStarted = true;
+    }
   }
 
   void _startOnlineTimer() {
