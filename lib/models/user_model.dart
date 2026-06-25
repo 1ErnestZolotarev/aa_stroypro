@@ -1,8 +1,9 @@
 class AppUser {
-  final String phone; // ключ документа = номер телефона
+  final String phone;
   final String name;
   final String city;
   final String role;
+  final String? uid;        // <-- новое поле
   final DateTime createdAt;
 
   AppUser({
@@ -10,6 +11,7 @@ class AppUser {
     required this.name,
     required this.city,
     required this.role,
+    this.uid,
     required this.createdAt,
   });
 
@@ -18,6 +20,7 @@ class AppUser {
         'name': name,
         'city': city,
         'role': role,
+        'uid': uid ?? '',
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -26,7 +29,9 @@ class AppUser {
         name: m['name'] ?? '',
         city: m['city'] ?? '',
         role: m['role'] ?? 'customer',
-        createdAt:
-            m['createdAt'] != null ? DateTime.parse(m['createdAt']) : DateTime.now(),
+        uid: m['uid'],
+        createdAt: m['createdAt'] != null
+            ? DateTime.parse(m['createdAt'])
+            : DateTime.now(),
       );
 }
