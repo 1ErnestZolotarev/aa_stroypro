@@ -6,7 +6,7 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Проверяет, существует ли пользователь с таким номером.
+  /// Проверяет, существует ли пользователь с таким номером в Firestore.
   Future<bool> phoneExists(String phone) async {
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     final doc = await _firestore.collection('users').doc(docId).get();
@@ -25,7 +25,6 @@ class AuthService {
   }
 
   /// Регистрация нового пользователя.
-  /// Бросает исключение, если номер уже зарегистрирован.
   Future<AppUser> register({
     required String phone,
     required String name,
@@ -36,20 +35,36 @@ class AuthService {
   }) async {
     final docId = phone.replaceAll(RegExp(r'\D'), '');
 
-    // Проверяем, нет ли уже такого номера
+    // Проверяем, нет ли уже такого номера в Firestore
     if (await phoneExists(phone)) {
       throw Exception('Этот номер уже зарегистрирован. Войдите или восстановите пароль.');
     }
 
     final authEmail = (email != null && email.isNotEmpty) ? email : '$docId@aa-stroypro.local';
-    
-    // Создаём аккаунт в Firebase Auth
-    await _auth.createUserWithEmailAndPassword(email: authEmail, password: password);
-    if (email != null && email.isNotEmpty) {
-      await _auth.currentUser?.sendEmailVerification();
+
+    try {
+      // Пытаемся создать нового пользователя
+      await _auth.createUserWithEmailAndPassword(email: authEmail, password: password);
+      if (email != null && email.isNotEmpty) {
+        await _auth.currentUser?.sendEmailVerification();
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        // Пользователь уже существует в Authentication (старый аккаунт)
+        // Пробуем войти с введённым паролем
+        try {
+          await _auth.signInWithEmailAndPassword(email: authEmail, password: password);
+        } on FirebaseAuthException {
+          throw Exception('Этот номер уже занят. Если это ваш аккаунт, восстановите пароль.');
+        }
+        // После успешного входа можно удалить старого пользователя? Нет, он нам нужен.
+        // Просто используем его
+      } else {
+        throw Exception('Ошибка регистрации: ${e.message}');
+      }
     }
 
-    // Сохраняем профиль в Firestore
+    // Сохраняем/обновляем профиль в Firestore
     final userRef = _firestore.collection('users').doc(docId);
     final newUser = AppUser(
       phone: phone,
@@ -58,7 +73,7 @@ class AuthService {
       role: role,
       createdAt: DateTime.now(),
     );
-    await userRef.set(newUser.toMap());
+    await userRef.set(newUser.toMap(), SetOptions(merge: true));
     if (email != null && email.isNotEmpty) {
       await userRef.update({'email': email});
     }
