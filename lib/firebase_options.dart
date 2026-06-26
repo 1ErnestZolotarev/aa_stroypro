@@ -1,4 +1,3 @@
-cat > ~/aa_stroypro/lib/firebase_options.dart << 'EOF'
 import 'package:firebase_core/firebase_core.dart';
 
 class DefaultFirebaseOptions {
@@ -14,4 +13,3 @@ class DefaultFirebaseOptions {
     );
   }
 }
-EOF
