@@ -14,7 +14,10 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
+          flutter-version: '3.24.x'   # <-- обновлено
+
+      - name: Upgrade Flutter (на всякий случай)
+        run: flutter upgrade
 
       - name: Write secret files
         run: |
