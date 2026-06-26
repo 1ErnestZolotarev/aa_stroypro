@@ -73,6 +73,7 @@ class AuthService {
       await userRef.update({'email': email});
     }
 
+    await _updateLastSeen(phone);
     return newUser;
   }
 
@@ -91,6 +92,7 @@ class AuthService {
     if (user.isBanned) {
       throw Exception('Ваш аккаунт заблокирован до ${_formatDateTime(user.bannedUntil!)}');
     }
+    await _updateLastSeen(phone);
     return user;
   }
 
@@ -110,6 +112,13 @@ class AuthService {
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     await _firestore.collection('users').doc(docId).update({
       'bannedUntil': '',
+    });
+  }
+
+  Future<void> _updateLastSeen(String phone) async {
+    final docId = phone.replaceAll(RegExp(r"\D"), "");
+    await _firestore.collection("users").doc(docId).update({
+      "lastSeen": DateTime.now().toIso8601String(),
     });
   }
 
