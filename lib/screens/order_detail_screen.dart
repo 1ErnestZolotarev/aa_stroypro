@@ -41,6 +41,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (u == null) return;
     final s = await FirebaseFirestore.instance.collection('chats')
         .where('participants', arrayContains: u.phone)
+        .where('orderId', isEqualTo: widget.order.id)
         .get();
     for (var d in s.docs) {
       final participants = List<String>.from(d.data()['participants'] ?? []);
@@ -54,9 +55,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<String> _createChat() async {
     final u = context.read<OurAuth.AuthProvider>().user!;
-    // Ищем существующий чат
+    // Ищем существующий чат с этим заказом
     final s = await FirebaseFirestore.instance.collection('chats')
         .where('participants', arrayContains: u.phone)
+        .where('orderId', isEqualTo: widget.order.id)
         .get();
     for (var d in s.docs) {
       final participants = List<String>.from(d.data()['participants'] ?? []);
@@ -65,11 +67,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return d.id;
       }
     }
-    // Создаём новый чат с двумя массивами
+    // Создаём новый чат
     final ref = FirebaseFirestore.instance.collection('chats').doc();
     await ref.set({
-      'participants': [u.phone, widget.order.authorId],          // телефоны (для совместимости)
-      'participantUids': [u.uid ?? '', widget.order.authorUid ?? ''], // UID для проверки прав
+      'participants': [u.phone, widget.order.authorId],
+      'participantUids': [u.uid ?? '', widget.order.authorUid ?? ''],
       'orderId': widget.order.id,
       'lastMessage': 'Чат создан',
       'lastMessageTime': DateTime.now().toIso8601String(),
