@@ -3,24 +3,30 @@ class Message {
   final String senderId;
   final String text;
   final DateTime timestamp;
+  final bool edited;
 
   Message({
     required this.id,
     required this.senderId,
     required this.text,
     required this.timestamp,
+    this.edited = false,
   });
 
   Map<String, dynamic> toMap() => {
         'senderId': senderId,
         'text': text,
         'timestamp': timestamp.toIso8601String(),
+        'edited': edited,
       };
 
-  factory Message.fromMap(String id, Map<String, dynamic> map) => Message(
+  factory Message.fromMap(String id, Map<String, dynamic> m) => Message(
         id: id,
-        senderId: map['senderId'],
-        text: map['text'],
-        timestamp: DateTime.parse(map['timestamp']),
+        senderId: m['senderId'] ?? '',
+        text: m['text'] ?? '',
+        timestamp: m['timestamp'] != null
+            ? DateTime.parse(m['timestamp'])
+            : DateTime.now(),
+        edited: m['edited'] ?? false,
       );
 }
