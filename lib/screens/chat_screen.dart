@@ -38,9 +38,33 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  Future<void> _showEditDialog(String messageId, String currentText) async {
+    final controller = TextEditingController(text: currentText);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Редактировать сообщение'),
+        content: TextField(controller: controller, maxLines: 3),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('Сохранить')),
+        ],
+      ),
+    );
+    if (result != null && result != currentText) {
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(widget.chatId)
+          .collection('messages')
+          .doc(messageId)
+          .update({'text': result, 'edited': true});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final u = context.read<OurAuth.AuthProvider>().user!;
+    final isAdmin = u.isAdmin;
     return Scaffold(
       appBar: AppBar(title: const Text('Чат')),
       body: Column(children: [
@@ -50,7 +74,6 @@ class _ChatScreenState extends State<ChatScreen> {
             if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
             if (!s.hasData || s.data!.docs.isEmpty) return const Center(child: Text('Нет сообщений. Напишите первым!'));
             final msgs = s.data!.docs;
-            // Плавная прокрутка вниз после отрисовки
             Future.delayed(const Duration(milliseconds: 100), () {
               if (_sc.hasClients) {
                 _sc.animateTo(_sc.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
@@ -62,19 +85,41 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (_, i) {
                 final d = msgs[i].data() as Map<String, dynamic>;
                 final me = d['senderId'] == u.phone;
-                return Align(
-                  alignment: me ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    padding: const EdgeInsets.all(12),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-                    decoration: BoxDecoration(
-                      color: me ? Colors.orange.shade100 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(d['text'] ?? '', style: const TextStyle(fontSize: 16)),
+                final edited = d['edited'] == true;
+                final text = d['text'] ?? '';
+                final messageId = msgs[i].id;
+
+                Widget messageBubble = Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  padding: const EdgeInsets.all(12),
+                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                  decoration: BoxDecoration(
+                    color: me ? Colors.orange.shade100 : Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(text, style: const TextStyle(fontSize: 16)),
+                      if (edited) const Text('(отредактировано)', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
                   ),
                 );
+
+                if (isAdmin) {
+                  return GestureDetector(
+                    onLongPress: () => _showEditDialog(messageId, text),
+                    child: Align(
+                      alignment: me ? Alignment.centerRight : Alignment.centerLeft,
+                      child: messageBubble,
+                    ),
+                  );
+                } else {
+                  return Align(
+                    alignment: me ? Alignment.centerRight : Alignment.centerLeft,
+                    child: messageBubble,
+                  );
+                }
               },
             );
           },
@@ -92,7 +137,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final t = _msg.text.trim(); if (t.isEmpty) return;
     await _firestore.sendMessage(widget.chatId, Message(id: DateTime.now().millisecondsSinceEpoch.toString(), senderId: phone, text: t, timestamp: DateTime.now()));
     _msg.clear();
-    // Обновляем lastReadBy после отправки
     await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).update({
       'lastReadBy.$phone': DateTime.now().toIso8601String(),
     });
