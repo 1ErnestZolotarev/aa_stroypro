@@ -1,0 +1,11 @@
+name: Dummy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  dummy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Обновление статуса безопасности"
