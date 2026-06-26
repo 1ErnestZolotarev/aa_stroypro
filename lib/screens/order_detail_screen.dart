@@ -55,7 +55,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<String> _createChat() async {
     final u = context.read<OurAuth.AuthProvider>().user!;
-    // Ищем существующий чат с этим заказом
     final s = await FirebaseFirestore.instance.collection('chats')
         .where('participants', arrayContains: u.phone)
         .where('orderId', isEqualTo: widget.order.id)
@@ -67,7 +66,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return d.id;
       }
     }
-    // Создаём новый чат
     final ref = FirebaseFirestore.instance.collection('chats').doc();
     await ref.set({
       'participants': [u.phone, widget.order.authorId],
@@ -93,18 +91,43 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _banUser() async {
-    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Забанить автора?'),
-      content: const Text('Пользователь не сможет войти в течение 24 часов.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Забанить', style: TextStyle(color: Colors.red))),
-      ],
-    ));
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Забанить автора?'),
+        content: const Text('Пользователь не сможет войти в течение 24 часов.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Забанить', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
     if (confirm != true) return;
+
     try {
-      await AuthService().banUser(widget.order.authorId, 24);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Пользователь забанен на 24 часа')));
+      final phone = widget.order.authorId;
+      // Проверим, существует ли документ пользователя
+      final docId = phone.replaceAll(RegExp(r'\D'), '');
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(docId).get();
+      if (!userDoc.exists) {
+        // Создаём минимальный профиль, чтобы бан сработал
+        await FirebaseFirestore.instance.collection('users').doc(docId).set({
+          'phone': phone,
+          'bannedUntil': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+          'createdAt': DateTime.now().toIso8601String(),
+          'role': 'customer',
+          'name': '',
+          'city': '',
+        });
+      } else {
+        await AuthService().banUser(phone, 24);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Пользователь забанен на 24 часа')),
+        );
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
@@ -119,26 +142,59 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  Future<void> _deleteOrder() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить объявление?'),
+        content: const Text('Это действие нельзя отменить.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Удалить', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('orders').doc(widget.order.id).delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Объявление удалено')));
+        Navigator.pop(context);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cu = context.read<OurAuth.AuthProvider>().user;
     final own = cu?.phone == widget.order.authorId;
     final isAdmin = cu?.isAdmin ?? false;
+    final isGuest = widget.order.authorUid == null || widget.order.authorUid!.isEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.order.title), actions: [
-        if (own) IconButton(icon: const Icon(Icons.edit), onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CreateOrderScreen(existingOrder: widget.order)))),
-        if (isAdmin && !own) PopupMenuButton<String>(
-          onSelected: (v) {
-            if (v == 'ban') _banUser();
-            else if (v == 'unban') _unbanUser();
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'ban', child: Text('Забанить на 24 часа')),
-            const PopupMenuItem(value: 'unban', child: Text('Разбанить')),
-          ],
-        ),
-      ]),
+      appBar: AppBar(
+        title: Text(widget.order.title),
+        actions: [
+          if (own)
+            IconButton(icon: const Icon(Icons.edit), onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CreateOrderScreen(existingOrder: widget.order)))),
+          if (isAdmin && !own)
+            PopupMenuButton<String>(
+              onSelected: (v) {
+                if (v == 'ban') _banUser();
+                else if (v == 'unban') _unbanUser();
+                else if (v == 'delete') _deleteOrder();
+              },
+              itemBuilder: (_) {
+                final items = <PopupMenuEntry<String>>[];
+                if (!isGuest) {
+                  items.add(const PopupMenuItem(value: 'ban', child: Text('Забанить на 24 часа')));
+                  items.add(const PopupMenuItem(value: 'unban', child: Text('Разбанить')));
+                }
+                items.add(const PopupMenuItem(value: 'delete', child: Text('Удалить объявление')));
+                return items;
+              },
+            ),
+        ],
+      ),
       body: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text('Автор: ${widget.order.authorName}', style: const TextStyle(fontSize: 18)),
