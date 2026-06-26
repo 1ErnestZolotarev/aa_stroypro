@@ -1,7 +1,7 @@
 name: Build APK
 
 on:
-  workflow_dispatch:   # позволяет запускать вручную
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,6 +20,9 @@ jobs:
         run: |
           echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
           echo "${{ secrets.FIREBASE_OPTIONS }}" > lib/firebase_options.dart
+
+      - name: Clean Gradle cache
+        run: rm -rf ~/.gradle/caches/
 
       - name: Install dependencies
         run: flutter pub get
