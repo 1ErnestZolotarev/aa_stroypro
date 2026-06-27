@@ -16,7 +16,7 @@ import 'widgets/adaptive_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try { await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform); } catch (_) {}
+  try { await Firebase.initializeApp(options: firebaseOptions); } catch (_) {}
   runApp(const MyApp());
 }
 
