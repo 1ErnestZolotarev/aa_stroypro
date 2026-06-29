@@ -93,6 +93,15 @@ class AuthService {
       throw Exception('Ваш аккаунт заблокирован до ${_formatDateTime(user.bannedUntil!)}');
     }
     await _updateLastSeen(phone);
+    // Сохраняем FCM-токен
+    if (context.auth.currentUser != null) {
+      String? token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await FirebaseFirestore.instance.collection("users").doc(docId).update({
+          "fcmToken": token,
+        });
+      }
+    }
     return user;
   }
 
