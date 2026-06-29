@@ -17,16 +17,19 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Set up Flutter
+      - name: Remove global Gradle cache
+        run: rm -rf ~/.gradle
+
+      - name: Set up Flutter 3.22.3
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'   # гарантированно работает с Gradle 7.5
+          flutter-version: '3.22.3'
+
+      - name: Downgrade Flutter (на всякий случай)
+        run: flutter downgrade
 
       - name: Write google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
-
-      - name: Clean Gradle cache
-        run: rm -rf ~/.gradle/caches/
 
       - name: Install dependencies
         run: flutter pub get
