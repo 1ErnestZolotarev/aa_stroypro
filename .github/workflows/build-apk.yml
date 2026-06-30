@@ -11,21 +11,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Remove all caches
+        run: |
+          rm -rf /opt/hostedtoolcache/flutter
+          rm -rf ~/.gradle
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Flutter
+      - name: Set up Flutter 3.22.3
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
+          flutter-version: '3.22.3'
 
-      - name: Write secret files
-        run: |
-          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
-          echo "${{ secrets.FIREBASE_OPTIONS }}" > lib/firebase_options.dart
+      - name: Write google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
 
       - name: Install dependencies
         run: flutter pub get
