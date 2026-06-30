@@ -16,7 +16,7 @@ class OrderProvider with ChangeNotifier {
 
   void resetPagination() { _allOrders.clear(); _filteredOrders.clear(); _lastDocument = null; _hasMore = true; }
 
-  Future<void> fetchOrders({String? city, String? searchWord, String? typeFilter, bool initialLoad = false}) async {
+  Future<void> fetchOrders({List<String>? cities, String? searchWord, String? typeFilter, bool initialLoad = false}) async {
     if (_loading) return; if (!_hasMore && !initialLoad) return;
     _loading = true; if (initialLoad) resetPagination(); notifyListeners();
 
@@ -27,17 +27,15 @@ class OrderProvider with ChangeNotifier {
       final snapshot = await query.get();
       List<ServiceOrder> fetched = snapshot.docs.map((d) => ServiceOrder.fromMap(d.id, d.data() as Map<String, dynamic>)).toList();
       if (fetched.isNotEmpty) { _allOrders.addAll(fetched); _lastDocument = snapshot.docs.last; _hasMore = snapshot.docs.length == 50; } else { _hasMore = false; }
-      _applyLocalFilters(city: city, searchWord: searchWord, typeFilter: typeFilter);
+      _applyLocalFilters(cities: cities, searchWord: searchWord, typeFilter: typeFilter);
     } catch (e) { debugPrint('Ошибка загрузки заказов: $e'); }
     _loading = false; notifyListeners();
   }
 
-  void _applyLocalFilters({String? city, String? searchWord, String? typeFilter}) {
+  void _applyLocalFilters({List<String>? cities, String? searchWord, String? typeFilter}) {
     _filteredOrders = _allOrders.where((o) {
-      // Безопасное сравнение городов
-      if (city != null && city.isNotEmpty) {
-        if (o.city == null) return false;
-        if (o.city!.trim().toLowerCase() != city.trim().toLowerCase()) return false;
+      if (cities != null && cities.isNotEmpty) {
+        if (!cities.contains(o.city)) return false;
       }
       if (typeFilter != null && typeFilter != 'all' && o.type != typeFilter) return false;
       if (searchWord != null && searchWord.isNotEmpty && !SearchService.matchesSearch(o.title, o.description, o.keywords, o.city ?? '', searchWord)) return false;

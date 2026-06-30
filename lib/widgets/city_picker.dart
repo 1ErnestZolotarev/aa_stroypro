@@ -1,57 +1,31 @@
 import 'package:flutter/material.dart';
 
-class CityPicker extends StatelessWidget {
-  final String? selectedCity;
-  final ValueChanged<String?> onChanged;
-  const CityPicker({this.selectedCity, required this.onChanged, super.key});
+class CityPicker extends StatefulWidget {
+  final List<String> selectedCities;
+  final ValueChanged<List<String>> onChanged;
+
+  const CityPicker({
+    super.key,
+    required this.selectedCities,
+    required this.onChanged,
+  });
+
+  @override
+  State<CityPicker> createState() => _CityPickerState();
+}
+
+class _CityPickerState extends State<CityPicker> {
+  late List<String> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = List<String>.from(widget.selectedCities);
+  }
 
   static const cities = [
     'Все города',
-    // Крупнейшие города России
-    'Москва',
-    'Санкт-Петербург',
-    'Новосибирск (Новосибирская обл.)',
-    'Екатеринбург (Свердловская обл.)',
-    'Казань (Татарстан)',
-    'Нижний Новгород (Нижегородская обл.)',
-    'Челябинск (Челябинская обл.)',
-    'Самара (Самарская обл.)',
-    'Омск (Омская обл.)',
-    'Ростов-на-Дону (Ростовская обл.)',
-    'Уфа (Башкортостан)',
-    'Красноярск (Красноярский край)',
-    'Пермь (Пермский край)',
-    'Воронеж (Воронежская обл.)',
-    'Волгоград (Волгоградская обл.)',
-    'Краснодар (Краснодарский край)',
-    'Саратов (Саратовская обл.)',
-    'Тюмень (Тюменская обл.)',
-    'Ижевск (Удмуртия)',
-    'Барнаул (Алтайский край)',
-    'Иркутск (Иркутская обл.)',
-    'Хабаровск (Хабаровский край)',
-    'Ярославль (Ярославская обл.)',
-    'Владивосток (Приморский край)',
-    'Томск (Томская обл.)',
-    'Оренбург (Оренбургская обл.)',
-    'Кемерово (Кемеровская обл.)',
-    'Рязань (Рязанская обл.)',
-    'Астрахань (Астраханская обл.)',
-    'Пенза (Пензенская обл.)',
-    'Липецк (Липецкая обл.)',
-    'Тула (Тульская обл.)',
-    'Киров (Кировская обл.)',
-    'Чебоксары (Чувашия)',
-    'Брянск (Брянская обл.)',
-    'Курск (Курская обл.)',
-    'Тверь (Тверская обл.)',
-    'Ставрополь (Ставропольский край)',
-    'Белгород (Белгородская обл.)',
-    'Сочи (Краснодарский край)',
-    'Симферополь (Крым)',
-    'Севастополь',
-    // Калининградская область
-    'Калининград (Калининградская обл.)',
+    'Калининград',
     'Светлогорск (Калининградская обл.)',
     'Зеленоградск (Калининградская обл.)',
     'Черняховск (Калининградская обл.)',
@@ -80,18 +54,97 @@ class CityPicker extends StatelessWidget {
     'Васильково (Калининградская обл.)',
     'Малиновка (Калининградская обл.)',
     'Талпаки (Калининградская обл.)',
+    'Москва',
+    'Химки (Московская обл.)',
+    'Мытищи (Московская обл.)',
+    'Королёв (Московская обл.)',
+    'Люберцы (Московская обл.)',
+    'Балашиха (Московская обл.)',
+    'Красногорск (Московская обл.)',
+    'Одинцово (Московская обл.)',
+    'Домодедово (Московская обл.)',
+    'Подольск (Московская обл.)',
+    'Реутов (Московская обл.)',
+    'Долгопрудный (Московская обл.)',
+    'Зеленоград (Московская обл.)',
+    'Троицк (Московская обл.)',
+    'Щербинка (Московская обл.)',
+    'Краснознаменск (Московская обл.)',
+    'Санкт-Петербург',
+    'Гатчина (Ленинградская обл.)',
+    'Выборг (Ленинградская обл.)',
+    'Пушкин (Ленинградская обл.)',
+    'Колпино (Ленинградская обл.)',
+    'Петергоф (Ленинградская обл.)',
+    'Всеволожск (Ленинградская обл.)',
+    'Кингисепп (Ленинградская обл.)',
+    'Сосновый Бор (Ленинградская обл.)',
+    'Тихвин (Ленинградская обл.)',
+    'Кириши (Ленинградская обл.)',
+    'Волхов (Ленинградская обл.)',
   ];
 
   @override
-  Widget build(BuildContext context) => ListView(
-    children: cities.map((c) {
-      if (c == 'Все города') return const ListTile(title: Text('Все города'));
-      final cleanName = c.split('(')[0].trim();
-      return ListTile(
-        title: Text(c),
-        selected: selectedCity == cleanName,
-        onTap: () => onChanged(cleanName),
-      );
-    }).toList()..add(ListTile(title: const Text('Сбросить'), onTap: () => onChanged(null))),
-  );
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            children: cities.map((city) {
+              final cleanCity = city.split('(')[0].trim();
+              final isSelected = _selected.contains(cleanCity);
+              if (city == 'Все города') {
+                return CheckboxListTile(
+                  title: const Text('Все города'),
+                  value: _selected.isEmpty,
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        _selected.clear();
+                      }
+                    });
+                  },
+                );
+              }
+              return CheckboxListTile(
+                title: Text(city),
+                value: isSelected,
+                onChanged: (val) {
+                  setState(() {
+                    if (val == true) {
+                      _selected.add(cleanCity);
+                    } else {
+                      _selected.remove(cleanCity);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                onPressed: () {
+                  widget.onChanged([]);
+                  Navigator.pop(context);
+                },
+                child: const Text('Сбросить'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  widget.onChanged(_selected);
+                  Navigator.pop(context);
+                },
+                child: const Text('Применить'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }

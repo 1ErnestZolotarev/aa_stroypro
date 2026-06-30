@@ -15,7 +15,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _sc = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
-  String? _selectedCity, _searchWord;
+  List<String> _selectedCities = [];   // <-- теперь список городов
+  String? _searchWord;
   String _typeFilter = 'all';
   List<String> _suggestions = [];
   bool _showSuggestions = false;
@@ -52,10 +53,36 @@ class _HomeScreenState extends State<HomeScreen> {
       });
   }
 
-  void _onScroll() { if (_sc.position.pixels >= _sc.position.maxScrollExtent - 200) context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter); }
-  void _applyFilters() { context.read<OrderProvider>().fetchOrders(city: _selectedCity, searchWord: _searchWord, typeFilter: _typeFilter, initialLoad: true); }
-  void _resetToHome() { final u = context.read<OurAuth.AuthProvider>().user; setState(() { _searchCtrl.clear(); _searchWord = null; _selectedCity = u?.city; _typeFilter = 'all'; _isNearby = false; _showSuggestions = false; }); _applyFilters(); }
-  void _toggleNearby() { setState(() { if (_isNearby) { _selectedCity = null; _isNearby = false; } else { final u = context.read<OurAuth.AuthProvider>().user; _selectedCity = u?.city; _isNearby = true; } }); _applyFilters(); }
+  void _onScroll() { if (_sc.position.pixels >= _sc.position.maxScrollExtent - 200) context.read<OrderProvider>().fetchOrders(cities: _selectedCities, searchWord: _searchWord, typeFilter: _typeFilter); }
+  void _applyFilters() { context.read<OrderProvider>().fetchOrders(cities: _selectedCities, searchWord: _searchWord, typeFilter: _typeFilter, initialLoad: true); }
+  
+  void _resetToHome() {
+    final u = context.read<OurAuth.AuthProvider>().user;
+    setState(() {
+      _searchCtrl.clear();
+      _searchWord = null;
+      _selectedCities = u?.city != null ? [u!.city] : [];
+      _typeFilter = 'all';
+      _isNearby = false;
+      _showSuggestions = false;
+    });
+    _applyFilters();
+  }
+
+  void _toggleNearby() {
+    final u = context.read<OurAuth.AuthProvider>().user;
+    setState(() {
+      if (_isNearby) {
+        _selectedCities = [];
+        _isNearby = false;
+      } else {
+        _selectedCities = u?.city != null ? [u!.city] : [];
+        _isNearby = true;
+      }
+    });
+    _applyFilters();
+  }
+
   void _openChats() { final u = context.read<OurAuth.AuthProvider>().user; if (u != null) Navigator.push(context, MaterialPageRoute(builder: (_) => ChatsListScreen(userId: u.phone))); }
 
   @override
@@ -74,19 +101,45 @@ class _HomeScreenState extends State<HomeScreen> {
         IconButton(icon: const Icon(Icons.person), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))),
       ]),
       body: Column(children: [
-        if (u?.city != null) Container(padding: const EdgeInsets.symmetric(horizontal:16,vertical:4), color: _isNearby ? Colors.green.shade50 : Colors.grey.shade100, child: Row(children: [Icon(_isNearby ? Icons.location_on : Icons.location_off, size:16, color: _isNearby ? Colors.green : Colors.grey), const SizedBox(width:6), Text(_isNearby ? 'Рядом: ${u!.city}' : 'Все города', style: TextStyle(fontSize:13, color: _isNearby ? Colors.green.shade700 : Colors.grey))])),
+        if (_selectedCities.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            color: _isNearby ? Colors.green.shade50 : Colors.orange.shade50,
+            child: Text(
+              _isNearby ? 'Рядом: ${_selectedCities.join(", ")}' : 'Выбраны города: ${_selectedCities.join(", ")}',
+              style: TextStyle(fontSize: 12, color: _isNearby ? Colors.green.shade700 : Colors.orange.shade700),
+            ),
+          ),
         Padding(padding: const EdgeInsets.symmetric(horizontal:16,vertical:8), child: Column(children: [
           TextField(controller: _searchCtrl, focusNode: _searchFocus, decoration: InputDecoration(hintText: 'Поиск по работам...', prefixIcon: const Icon(Icons.search), suffixIcon: _searchCtrl.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchCtrl.clear(); _searchWord = null; _showSuggestions = false; _applyFilters(); }) : null), onSubmitted: (v) { _searchWord = v.trim().isNotEmpty ? v.trim() : null; _showSuggestions = false; _applyFilters(); }),
           if (_showSuggestions) Container(margin: const EdgeInsets.only(top:4), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)]), constraints: const BoxConstraints(maxHeight:200), child: ListView.builder(shrinkWrap: true, itemCount: _suggestions.length, itemBuilder: (_,i) => ListTile(dense: true, leading: const Icon(Icons.search, size:18, color: Colors.grey), title: Text(_suggestions[i]), onTap: () { _searchCtrl.text = _suggestions[i]; _searchWord = _suggestions[i]; _showSuggestions = false; _applyFilters(); }))),
         ])),
         Padding(padding: const EdgeInsets.symmetric(horizontal:16,vertical:4), child: SegmentedButton<String>(segments: const [ButtonSegment(value:'all',label:Text('Все')),ButtonSegment(value:'request',label:Text('Заказы')),ButtonSegment(value:'offer',label:Text('Предложения'))], selected: {_typeFilter}, onSelectionChanged: (s) { setState(() => _typeFilter = s.first); _applyFilters(); })),
-        Expanded(child: p.orders.isEmpty && !p.loading ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.inbox, size:64, color:Colors.grey), const SizedBox(height:16), Text(_selectedCity!=null?'Нет заказов в городе $_selectedCity':'Нет объявлений', style: const TextStyle(color:Colors.grey))])) : ListView.builder(controller: _sc, itemCount: p.orders.length+(p.hasMore?1:0), itemBuilder: (_,i) { if (i==p.orders.length) return const Center(child: CircularProgressIndicator()); final o = p.orders[i]; return OrderCard(order: o, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: o)))); })),
+        Expanded(child: p.orders.isEmpty && !p.loading ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.inbox, size:64, color:Colors.grey), const SizedBox(height:16), Text(_selectedCities.isNotEmpty?'Нет заказов в выбранных городах':'Нет объявлений', style: const TextStyle(color:Colors.grey))])) : ListView.builder(controller: _sc, itemCount: p.orders.length+(p.hasMore?1:0), itemBuilder: (_,i) { if (i==p.orders.length) return const Center(child: CircularProgressIndicator()); final o = p.orders[i]; return OrderCard(order: o, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order: o)))); })),
       ]),
       floatingActionButton: FloatingActionButton(onPressed: () => Navigator.pushNamed(context, '/create_order'), child: const Icon(Icons.add)),
     );
   }
 
-  void _showCityPicker() { showModalBottomSheet(context: context, builder: (_) => CityPicker(selectedCity: _selectedCity, onChanged: (city) { setState(() { _selectedCity = city; _isNearby = false; }); Navigator.pop(context); _applyFilters(); })); }
+  void _showCityPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: CityPicker(
+          selectedCities: _selectedCities,
+          onChanged: (cities) {
+            setState(() {
+              _selectedCities = cities;
+              _isNearby = false;
+            });
+            _applyFilters();
+          },
+        ),
+      ),
+    );
+  }
 }
 
 class ChatsListScreen extends StatelessWidget {
