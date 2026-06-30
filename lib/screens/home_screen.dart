@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart' as OurAuth;
 import '../providers/order_provider.dart';
 import '../services/search_service.dart';
@@ -15,7 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _sc = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
-  List<String> _selectedCities = [];   // <-- теперь список городов
+  List<String> _selectedCities = [];
   String? _searchWord;
   String _typeFilter = 'all';
   List<String> _suggestions = [];
@@ -29,7 +30,28 @@ class _HomeScreenState extends State<HomeScreen> {
     _sc.addListener(_onScroll);
     _searchCtrl.addListener(() { final q = _searchCtrl.text; setState(() { _suggestions = SearchService.getSuggestions(q); _showSuggestions = q.isNotEmpty && _suggestions.isNotEmpty; }); });
     _searchFocus.addListener(() { if (!_searchFocus.hasFocus) setState(() => _showSuggestions = false); });
-    Future.microtask(() { _applyFilters(); _listenUnread(); });
+    _loadSavedCities();
+  }
+
+  Future<void> _loadSavedCities() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCities = prefs.getStringList('selectedCities') ?? [];
+    if (savedCities.isNotEmpty) {
+      setState(() => _selectedCities = savedCities);
+    } else {
+      // По умолчанию — город из профиля
+      final u = context.read<OurAuth.AuthProvider>().user;
+      if (u?.city != null) {
+        setState(() => _selectedCities = [u!.city]);
+      }
+    }
+    _applyFilters();
+    _listenUnread();
+  }
+
+  Future<void> _saveCities() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('selectedCities', _selectedCities);
   }
 
   void _listenUnread() {
@@ -66,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isNearby = false;
       _showSuggestions = false;
     });
+    _saveCities();
     _applyFilters();
   }
 
@@ -80,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isNearby = true;
       }
     });
+    _saveCities();
     _applyFilters();
   }
 
@@ -134,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _selectedCities = cities;
               _isNearby = false;
             });
+            _saveCities();
             _applyFilters();
           },
         ),
