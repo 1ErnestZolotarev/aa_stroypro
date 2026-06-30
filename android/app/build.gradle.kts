@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -17,7 +18,7 @@ android {
         applicationId = "com.example.aa_stroypro"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 3
+        versionCode = 4
         versionName = flutter.versionName
     }
 
@@ -37,5 +38,3 @@ kotlin {
 flutter {
     source = "../.."
 }
-
-apply(plugin = "com.google.gms.google-services")
