@@ -55,9 +55,6 @@ class AuthService {
       }
     }
 
-    // Сохраняем номер телефона в displayName
-    await _auth.currentUser?.updateDisplayName(phone);
-
     final currentUid = _auth.currentUser?.uid;
     final userRef = _firestore.collection('users').doc(docId);
     final newUser = AppUser(
@@ -73,7 +70,6 @@ class AuthService {
       await userRef.update({'email': email});
     }
 
-    await _updateLastSeen(phone);
     return newUser;
   }
 
@@ -81,10 +77,6 @@ class AuthService {
     final email = await getEmailByPhone(phone);
     if (email == null) return null;
     await _auth.signInWithEmailAndPassword(email: email, password: password);
-
-    // Сохраняем номер телефона в displayName
-    await _auth.currentUser?.updateDisplayName(phone);
-
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     final doc = await _firestore.collection('users').doc(docId).get();
     if (!doc.exists) return null;
@@ -92,20 +84,25 @@ class AuthService {
     if (user.isBanned) {
       throw Exception('Ваш аккаунт заблокирован до ${_formatDateTime(user.bannedUntil!)}');
     }
-    await _updateLastSeen(phone);
+    return user;
+  }
+
+  String _formatDateTime(DateTime dt) {
+    return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> banUser(String phone, int hours) async {
+    final docId = phone.replaceAll(RegExp(r'\D'), '');
+    final bannedUntil = DateTime.now().add(Duration(hours: hours));
+    await _firestore.collection('users').doc(docId).update({
+      'bannedUntil': bannedUntil.toIso8601String(),
+    });
   }
 
   Future<void> unbanUser(String phone) async {
     final docId = phone.replaceAll(RegExp(r'\D'), '');
     await _firestore.collection('users').doc(docId).update({
       'bannedUntil': '',
-    });
-  }
-
-  Future<void> _updateLastSeen(String phone) async {
-    final docId = phone.replaceAll(RegExp(r"\D"), "");
-    await _firestore.collection("users").doc(docId).update({
-      "lastSeen": DateTime.now().toIso8601String(),
     });
   }
 
