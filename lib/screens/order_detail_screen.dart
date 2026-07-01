@@ -5,6 +5,7 @@ import '../models/order_model.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart' as OurAuth;
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import 'chat_screen.dart';
 import 'create_order_screen.dart';
 
@@ -106,11 +107,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     try {
       final phone = widget.order.authorId;
-      // Проверим, существует ли документ пользователя
       final docId = phone.replaceAll(RegExp(r'\D'), '');
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(docId).get();
       if (!userDoc.exists) {
-        // Создаём минимальный профиль, чтобы бан сработал
+        // Создаём профиль для гостя и баним
         await FirebaseFirestore.instance.collection('users').doc(docId).set({
           'phone': phone,
           'bannedUntil': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
@@ -122,7 +122,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       } else {
         await AuthService().banUser(phone, 24);
       }
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Пользователь забанен на 24 часа')),
@@ -155,7 +154,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     );
     if (confirm == true) {
-      await FirebaseFirestore.instance.collection('orders').doc(widget.order.id).delete();
+      await FirestoreService().deleteOrder(widget.order.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Объявление удалено')));
         Navigator.pop(context);
@@ -168,7 +167,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final cu = context.read<OurAuth.AuthProvider>().user;
     final own = cu?.phone == widget.order.authorId;
     final isAdmin = cu?.isAdmin ?? false;
-    final isGuest = widget.order.authorUid == null || widget.order.authorUid!.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -183,15 +181,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 else if (v == 'unban') _unbanUser();
                 else if (v == 'delete') _deleteOrder();
               },
-              itemBuilder: (_) {
-                final items = <PopupMenuEntry<String>>[];
-                if (!isGuest) {
-                  items.add(const PopupMenuItem(value: 'ban', child: Text('Забанить на 24 часа')));
-                  items.add(const PopupMenuItem(value: 'unban', child: Text('Разбанить')));
-                }
-                items.add(const PopupMenuItem(value: 'delete', child: Text('Удалить объявление')));
-                return items;
-              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'ban', child: Text('Забанить на 24 часа')),
+                const PopupMenuItem(value: 'unban', child: Text('Разбанить')),
+                const PopupMenuItem(value: 'delete', child: Text('Удалить объявление')),
+              ],
             ),
         ],
       ),
