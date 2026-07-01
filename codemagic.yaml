@@ -4,7 +4,6 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
       - flutter build apk --release
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
