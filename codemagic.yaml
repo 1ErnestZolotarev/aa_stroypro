@@ -1,11 +1,12 @@
 workflows:
   release-build:
-    name: Debug Build with Full Log
+    name: Debug Build with Cache Clear
     environment:
       flutter: stable
     scripts:
+      - rm -rf ~/.gradle/caches/
+      - flutter clean
       - flutter build apk --debug 2>&1 | tee build.log
-      - echo "=== Содержимое build.log (последние 80 строк) ==="
       - tail -80 build.log
     artifacts:
       - build.log
