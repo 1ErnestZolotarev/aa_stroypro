@@ -31,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchCtrl.addListener(() { final q = _searchCtrl.text; setState(() { _suggestions = SearchService.getSuggestions(q); _showSuggestions = q.isNotEmpty && _suggestions.isNotEmpty; }); });
     _searchFocus.addListener(() { if (!_searchFocus.hasFocus) setState(() => _showSuggestions = false); });
     _loadSavedCities();
+    _listenChats();   // ← возвращаем автоматическую загрузку чатов
   }
 
   Future<void> _loadSavedCities() async {
@@ -39,14 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (savedCities.isNotEmpty) {
       setState(() => _selectedCities = savedCities);
     } else {
-      // По умолчанию — город из профиля
       final u = context.read<OurAuth.AuthProvider>().user;
       if (u?.city != null) {
         setState(() => _selectedCities = [u!.city]);
       }
     }
     _applyFilters();
-    _listenUnread();
   }
 
   Future<void> _saveCities() async {
@@ -54,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await prefs.setStringList('selectedCities', _selectedCities);
   }
 
-  void _listenUnread() {
+  void _listenChats() {
     final u = context.read<OurAuth.AuthProvider>().user;
     if (u == null) return;
     FirebaseFirestore.instance.collection('chats')
