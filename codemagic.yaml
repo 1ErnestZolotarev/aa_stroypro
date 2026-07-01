@@ -4,6 +4,7 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
       - echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
       - flutter build apk --release
     artifacts:
