@@ -1,7 +1,7 @@
 name: aa_stroypro
 description: Биржа отделочных работ
 publish_to: 'none'
-version: 1.0.0+4   # увеличьте версию
+version: 1.0.0+4
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -17,9 +17,6 @@ dependencies:
   firebase_messaging: ^14.7.0
   provider: ^6.1.1
   url_launcher: ^6.2.2
-  cloud_functions: ^4.6.0
-  firebase_messaging: ^14.7.0
-  shared_preferences: ^2.2.0
   shared_preferences: ^2.2.0
 
 dev_dependencies:
