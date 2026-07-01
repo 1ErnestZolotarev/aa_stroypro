@@ -1,10 +1,15 @@
 workflows:
   release-build:
-    name: Debug Build with Verbose Log
+    name: Diagnostic Build
     environment:
       flutter: stable
     scripts:
-      - flutter build apk --debug --verbose 2>&1 | tee build-verbose.log
+      - flutter build apk --debug || true
+      - echo "=== Содержимое \$FCI_BUILD_DIR ==="
+      - ls -la \$FCI_BUILD_DIR || true
+      - echo "=== Дерево build ==="
+      - find \$FCI_BUILD_DIR -name "*.apk" || true
+      - echo "=== Поиск APK по всей системе ==="
+      - find / -name "*.apk" 2>/dev/null | head -20 || true
     artifacts:
-      - build-verbose.log
-      - build/app/outputs/flutter-apk/app-debug.apk
+      - "*.apk"
