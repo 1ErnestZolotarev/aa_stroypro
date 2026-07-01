@@ -8,7 +8,6 @@ workflows:
     scripts:
       - echo "$KEYSTORE_BASE64" | base64 --decode > $KEYSTORE_FILE
       - echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
-      - echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
       - flutter build apk --release
       - mkdir -p build/app/outputs/flutter-apk
       - mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-unsigned.apk || true
