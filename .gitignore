@@ -4,13 +4,6 @@ build/
 .idea/
 .vscode/
 *.lock
-android/app/google-services.json
-android/app/google-services.json
-android/app/google-services.json
-android/app/google-services.json
-android/app/google-services.json
 .flutter-plugins-dependencies
 android/.kotlin/
 .firebaserc
-lib/firebase_options.dart
-android/app/google-services.json
