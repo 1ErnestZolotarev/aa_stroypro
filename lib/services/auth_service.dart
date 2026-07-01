@@ -93,28 +93,6 @@ class AuthService {
       throw Exception('Ваш аккаунт заблокирован до ${_formatDateTime(user.bannedUntil!)}');
     }
     await _updateLastSeen(phone);
-    // Сохраняем FCM-токен
-    if (context.auth.currentUser != null) {
-      String? token = await FirebaseMessaging.instance.getToken();
-      if (token != null) {
-        await FirebaseFirestore.instance.collection("users").doc(docId).update({
-          "fcmToken": token,
-        });
-      }
-    }
-    return user;
-  }
-
-  String _formatDateTime(DateTime dt) {
-    return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> banUser(String phone, int hours) async {
-    final docId = phone.replaceAll(RegExp(r'\D'), '');
-    final bannedUntil = DateTime.now().add(Duration(hours: hours));
-    await _firestore.collection('users').doc(docId).update({
-      'bannedUntil': bannedUntil.toIso8601String(),
-    });
   }
 
   Future<void> unbanUser(String phone) async {
