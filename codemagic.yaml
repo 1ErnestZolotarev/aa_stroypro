@@ -1,13 +1,23 @@
 workflows:
   release-build:
-    name: Debug Build with Cache Clear
+    name: Signed Release Build
     environment:
       flutter: stable
+      vars:
+        KEYSTORE_FILE: /tmp/keystore.jks
     scripts:
-      - rm -rf ~/.gradle/caches/
-      - flutter clean
-      - flutter build apk --debug 2>&1 | tee build.log
-      - tail -80 build.log
+      - echo "$KEYSTORE_BASE64" | base64 --decode > $KEYSTORE_FILE
+      - echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+      - echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
+      - flutter build apk --release
+      - mkdir -p build/app/outputs/flutter-apk
+      - mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-unsigned.apk || true
+      - apksigner sign
+        --ks $KEYSTORE_FILE
+        --ks-pass pass:Ernest88!
+        --ks-key-alias aa-stroypro
+        --key-pass pass:Ernest88!
+        --out build/app/outputs/flutter-apk/app-release.apk
+        build/app/outputs/flutter-apk/app-unsigned.apk
     artifacts:
-      - build.log
-      - build/app/outputs/flutter-apk/app-debug.apk
+      - build/app/outputs/flutter-apk/app-release.apk
