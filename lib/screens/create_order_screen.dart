@@ -1,5 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
@@ -10,6 +11,7 @@ import '../services/search_service.dart';
 class CreateOrderScreen extends StatefulWidget {
   final ServiceOrder? existingOrder;
   const CreateOrderScreen({super.key, this.existingOrder});
+
   @override
   State<CreateOrderScreen> createState() => _CreateOrderScreenState();
 }
@@ -107,34 +109,36 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           await FirestoreService().addOrder(o);
         }
 
-        // Отправка push-уведомлений исполнителям
-        try {
-          final executors = await FirebaseFirestore.instance
-              .collection('users')
-              .where('role', isEqualTo: 'executor')
-              .where('city', isEqualTo: o.city)
-              .get();
-          final tokens = <String>[];
-          for (var doc in executors.docs) {
-            final data = doc.data();
-            if (data['fcmToken'] != null) {
-              tokens.add(data['fcmToken']);
+        // Отправляем push-уведомления исполнителям в этом городе
+        if (!_editing) {
+          try {
+            final executors = await FirebaseFirestore.instance
+                .collection('users')
+                .where('role', isEqualTo: 'executor')
+                .where('city', isEqualTo: o.city)
+                .get();
+            final tokens = <String>[];
+            for (var doc in executors.docs) {
+              final data = doc.data();
+              if (data['fcmToken'] != null) {
+                tokens.add(data['fcmToken']);
+              }
             }
+            if (tokens.isNotEmpty) {
+              final functions = FirebaseFunctions.instance;
+              final callable = functions.httpsCallable('sendOrderNotification');
+              await callable.call({
+                'orderId': o.id,
+                'orderTitle': o.title,
+                'city': o.city,
+                'budget': o.budget,
+                'type': o.type,
+                'tokens': tokens,
+              });
+            }
+          } catch (e) {
+            debugPrint('Ошибка отправки уведомлений: $e');
           }
-          if (tokens.isNotEmpty) {
-            final functions = FirebaseFunctions.instance;
-            final callable = functions.httpsCallable('sendOrderNotification');
-            await callable.call({
-              'orderId': o.id,
-              'orderTitle': o.title,
-              'city': o.city,
-              'budget': o.budget,
-              'type': o.type,
-              'tokens': tokens,
-            });
-          }
-        } catch (e) {
-          debugPrint('Ошибка отправки уведомлений: $e');
         }
 
         if (mounted) {

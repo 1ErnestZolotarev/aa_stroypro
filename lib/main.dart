@@ -25,36 +25,19 @@ void main() async {
   } catch (_) {}
 
   // Запрос разрешения на уведомления
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-  NotificationSettings settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
-  // Получение токена и сохранение при входе
-  String? token = await messaging.getToken();
-  print('FCM Token: $token');
-
-  // Обработка уведомлений, когда приложение открыто
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    // Можно показать локальное уведомление или SnackBar
-  });
+  final messaging = FirebaseMessaging.instance;
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
 
   // Обработка нажатия на уведомление (когда приложение было закрыто)
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    final orderId = message.data['orderId'];
-    if (orderId != null) {
-      // Здесь можно навигировать на заказ
-    }
+    // Можно навигировать на заказ, но пока оставим заглушку
   });
 
-  runApp(MyApp(token: token));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  final String? fcmToken;
-  const MyApp({super.key, this.fcmToken});
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();

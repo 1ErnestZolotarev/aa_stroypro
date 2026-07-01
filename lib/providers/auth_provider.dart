@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -16,22 +16,18 @@ class AuthProvider with ChangeNotifier {
   String? get error => _error;
   String? get currentPhone => _currentPhone;
 
-  AuthProvider() {
-    // Слушаем изменения состояния аутентификации
-    FirebaseAuth.instance.authStateChanges().listen((firebaseUser) async {
-      if (firebaseUser != null) {
-        // Пользователь вошёл – берём номер из displayName
-        final phone = firebaseUser.displayName;
-        if (phone != null && phone.isNotEmpty) {
-          _user = await _auth.getCurrentUser(phone);
-          _currentPhone = phone;
-        }
-      } else {
-        _user = null;
-        _currentPhone = null;
+  Future<void> _updateFcmToken(String phone) async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        final docId = phone.replaceAll(RegExp(r'\D'), '');
+        await FirebaseFirestore.instance.collection('users').doc(docId).update({
+          'fcmToken': token,
+        });
       }
-      notifyListeners();
-    });
+    } catch (e) {
+      debugPrint('Ошибка сохранения FCM токена: $e');
+    }
   }
 
   Future<void> register({
@@ -46,6 +42,7 @@ class AuthProvider with ChangeNotifier {
     try {
       _user = await _auth.register(phone: phone, name: name, city: city, role: role, email: email, password: password);
       _currentPhone = phone;
+      await _updateFcmToken(phone);
     } catch (e) { _error = e.toString(); }
     _loading = false; notifyListeners();
   }
@@ -55,6 +52,7 @@ class AuthProvider with ChangeNotifier {
     try {
       _user = await _auth.signIn(phone, password);
       _currentPhone = phone;
+      await _updateFcmToken(phone);
     } catch (e) { _error = e.toString(); }
     _loading = false; notifyListeners();
   }
@@ -69,7 +67,17 @@ class AuthProvider with ChangeNotifier {
         if (city != null) 'city': city,
         if (role != null) 'role': role,
       });
-      _user = AppUser(phone: _currentPhone!, name: name ?? _user!.name, city: city ?? _user!.city, role: role ?? _user!.role, uid: _user!.uid, isAdmin: _user!.isAdmin, bannedUntil: _user!.bannedUntil, lastSeen: _user!.lastSeen, createdAt: _user!.createdAt);
+      _user = AppUser(
+        phone: _currentPhone!,
+        name: name ?? _user!.name,
+        city: city ?? _user!.city,
+        role: role ?? _user!.role,
+        uid: _user!.uid,
+        isAdmin: _user!.isAdmin,
+        bannedUntil: _user!.bannedUntil,
+        lastSeen: _user!.lastSeen,
+        createdAt: _user!.createdAt,
+      );
     } catch (e) { _error = e.toString(); }
     _loading = false; notifyListeners();
   }
