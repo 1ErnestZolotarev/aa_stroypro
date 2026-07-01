@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchCtrl.addListener(() { final q = _searchCtrl.text; setState(() { _suggestions = SearchService.getSuggestions(q); _showSuggestions = q.isNotEmpty && _suggestions.isNotEmpty; }); });
     _searchFocus.addListener(() { if (!_searchFocus.hasFocus) setState(() => _showSuggestions = false); });
     _loadSavedCities();
-    _listenChats();   // ← возвращаем автоматическую загрузку чатов
+    _listenChats();
   }
 
   Future<void> _loadSavedCities() async {
@@ -192,11 +192,29 @@ class ChatsListScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Чаты')),
     body: StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('chats').where('participants', arrayContains: userId).orderBy('lastMessageTime', descending: true).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .snapshots(),
       builder: (_, s) {
-        if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (!s.hasData || s.data!.docs.isEmpty) return const Center(child: Text('Нет чатов'));
+        if (s.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (s.hasError) {
+          return Center(child: Text('Ошибка: ${s.error}'));
+        }
+        if (!s.hasData || s.data!.docs.isEmpty) {
+          return const Center(child: Text('Нет чатов'));
+        }
+
         final chats = s.data!.docs;
+        // Сортировка на клиенте – новые сверху
+        chats.sort((a, b) {
+          final aTime = (a.data() as Map<String, dynamic>)['lastMessageTime'] as String? ?? '';
+          final bTime = (b.data() as Map<String, dynamic>)['lastMessageTime'] as String? ?? '';
+          return bTime.compareTo(aTime);
+        });
+
         return ListView.builder(
           itemCount: chats.length,
           itemBuilder: (_, i) {
@@ -205,18 +223,46 @@ class ChatsListScreen extends StatelessWidget {
             return Dismissible(
               key: Key(chats[i].id),
               direction: DismissDirection.endToStart,
-              background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
-              confirmDismiss: (_) async => await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Удалить чат?'), content: const Text('Вся переписка будет удалена.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Удалить', style: TextStyle(color: Colors.red)))])) ?? false,
+              background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Icon(Icons.delete, color: Colors.white)),
+              confirmDismiss: (_) async =>
+                  await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Удалить чат?'),
+                          content: const Text('Вся переписка будет удалена.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Отмена')),
+                            TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Удалить', style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      ) ??
+                  false,
               onDismissed: (_) => _deleteChat(chats[i].id),
               child: ListTile(
-                leading: CircleAvatar(backgroundColor: Colors.orange.shade100, child: const Icon(Icons.person, color: Colors.orange)),
+                leading: CircleAvatar(
+                    backgroundColor: Colors.orange.shade100,
+                    child: const Icon(Icons.person, color: Colors.orange)),
                 title: FutureBuilder<String>(
                   future: _getPartnerName(participants),
                   builder: (_, nameSnap) => Text(nameSnap.data ?? 'Загрузка...'),
                 ),
                 subtitle: Text(d['lastMessage'] as String? ?? '', maxLines: 1),
-                trailing: d['lastMessageTime'] != null ? Text(_fmt(d['lastMessageTime'] as String), style: TextStyle(fontSize: 12, color: Colors.grey.shade500)) : null,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: chats[i].id))),
+                trailing: d['lastMessageTime'] != null
+                    ? Text(_fmt(d['lastMessageTime'] as String),
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500))
+                    : null,
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => ChatScreen(chatId: chats[i].id))),
               ),
             );
           },
@@ -225,5 +271,8 @@ class ChatsListScreen extends StatelessWidget {
     ),
   );
 
-  String _fmt(String iso) { final dt = DateTime.parse(iso); return '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}'; }
+  String _fmt(String iso) {
+    final dt = DateTime.parse(iso);
+    return '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  }
 }
