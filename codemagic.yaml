@@ -1,15 +1,12 @@
 workflows:
   release-build:
-    name: Diagnostic Build
+    name: Debug Build with Full Log
     environment:
       flutter: stable
     scripts:
-      - flutter build apk --debug || true
-      - echo "=== Содержимое \$FCI_BUILD_DIR ==="
-      - ls -la \$FCI_BUILD_DIR || true
-      - echo "=== Дерево build ==="
-      - find \$FCI_BUILD_DIR -name "*.apk" || true
-      - echo "=== Поиск APK по всей системе ==="
-      - find / -name "*.apk" 2>/dev/null | head -20 || true
+      - flutter build apk --debug 2>&1 | tee build.log
+      - echo "=== Содержимое build.log (последние 80 строк) ==="
+      - tail -80 build.log
     artifacts:
-      - "*.apk"
+      - build.log
+      - build/app/outputs/flutter-apk/app-debug.apk
