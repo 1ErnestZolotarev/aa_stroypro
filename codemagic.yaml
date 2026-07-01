@@ -1,12 +1,9 @@
 workflows:
   release-build:
-    name: Release Build
+    name: Debug Build (for store)
     environment:
       flutter: stable
     scripts:
-      - rm -rf ~/.gradle/caches/
-      - flutter clean
-      - flutter build apk --release || true
-      - find build -name "*.apk" -exec cp {} build/app/outputs/flutter-apk/app-release.apk \;
+      - flutter build apk --debug
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/flutter-apk/app-debug.apk
