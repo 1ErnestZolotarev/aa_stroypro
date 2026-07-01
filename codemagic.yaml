@@ -4,11 +4,6 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - rm -rf build/app/outputs/flutter-apk/* || true
-      - flutter build apk --release || true
-      - echo "=== Содержимое папки build ==="
-      - find build -name "*.apk" -exec ls -la {} \;
-      - mkdir -p build/app/outputs/flutter-apk
-      - find build -name "*.apk" -exec cp {} build/app/outputs/flutter-apk/app-release.apk \;
+      - flutter build apk --release
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
