@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 import '../providers/auth_provider.dart' as OurAuth;
@@ -19,22 +18,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<String> _selectedCities = [];
   bool _isLoading = false;
-  final ScrollController _scrollController = ScrollController();
   List<ServiceOrder> _orders = [];
-  DocumentSnapshot? _lastDocument;
-  bool _hasMore = true;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
     _updateLastSeen();
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        _loadMore();
-      }
-    });
   }
 
   Future<void> _updateLastSeen() async {
@@ -42,37 +32,18 @@ class _HomeScreenState extends State<HomeScreen> {
     await auth.updateLastSeen();
   }
 
-  Future<void> _loadOrders({bool reset = true}) async {
-    if (reset) {
-      setState(() {
-        _orders = [];
-        _lastDocument = null;
-        _hasMore = true;
-        _isLoading = true;
-      });
-    }
+  Future<void> _loadOrders() async {
+    setState(() => _isLoading = true);
     final provider = context.read<OrderProvider>();
     final stream = provider.getOrdersStream(
       cities: _selectedCities.isEmpty ? null : _selectedCities,
       searchWord: _searchController.text.isNotEmpty ? _searchController.text : null,
-      startAfter: reset ? null : _lastDocument,
     );
     final list = await stream.first;
     setState(() {
-      if (reset) {
-        _orders = list;
-      } else {
-        _orders.addAll(list);
-      }
-      _lastDocument = list.isNotEmpty ? list.last.id : null;
-      _hasMore = list.length >= 20;
+      _orders = list;
       _isLoading = false;
     });
-  }
-
-  Future<void> _loadMore() async {
-    if (!_hasMore || _isLoading) return;
-    await _loadOrders(reset: false);
   }
 
   @override
@@ -103,12 +74,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       hintText: 'Поиск...',
                       border: OutlineInputBorder(),
                     ),
-                    onSubmitted: (_) => _loadOrders(reset: true),
+                    onSubmitted: (_) => _loadOrders(),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.search),
-                  onPressed: () => _loadOrders(reset: true),
+                  onPressed: () => _loadOrders(),
                 ),
               ],
             ),
@@ -119,24 +90,17 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() {
                 _selectedCities = cities;
               });
-              _loadOrders(reset: true);
+              _loadOrders();
             },
           ),
           Expanded(
-            child: _isLoading && _orders.isEmpty
+            child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _orders.isEmpty
                     ? const Center(child: Text('Нет заказов'))
                     : ListView.builder(
-                        controller: _scrollController,
-                        itemCount: _orders.length + (_hasMore ? 1 : 0),
+                        itemCount: _orders.length,
                         itemBuilder: (context, index) {
-                          if (index == _orders.length) {
-                            return const Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          }
                           final order = _orders[index];
                           return OrderCard(
                             order: order,
