@@ -31,7 +31,6 @@ class AuthService {
     required String password,
   }) async {
     try {
-      // Создаем пользователя в Firebase Auth с email (если email не указан – создаем фейковый)
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email ?? '$phone@aa-stroypro.local',
         password: password,
@@ -51,7 +50,6 @@ class AuthService {
         createdAt: now,
       );
       await _firestore.collection('users').doc(docId).set(user.toMap());
-      // дополнительно сохраним uid в поле для связи
       await _firestore.collection('users').doc(docId).update({'uid': uid});
       return user;
     } catch (e) {
@@ -73,7 +71,6 @@ class AuthService {
       if (!doc.exists) return null;
       final data = doc.data()!;
       final user = AppUser.fromMap(data);
-      // обновляем lastSeen
       await _firestore.collection('users').doc(docId).update({
         'lastSeen': DateTime.now().toIso8601String(),
       });
@@ -83,24 +80,20 @@ class AuthService {
     }
   }
 
-  String _formatDateTime(DateTime dt) {
-    return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  Future<void> banUser(String phone, int hours) async {
+    final docId = phone.replaceAll(RegExp(r'\D'), '');
+    final bannedUntil = DateTime.now().add(Duration(hours: hours));
+    await _firestore.collection('users').doc(docId).update({
+      'bannedUntil': bannedUntil.toIso8601String(),
+    });
   }
 
-Future<void> banUser(String phone, int hours) async {
-  final docId = phone.replaceAll(RegExp(r'\D'), '');
-  final bannedUntil = DateTime.now().add(Duration(hours: hours));
-  await _firestore.collection('users').doc(docId).update({
-    'bannedUntil': bannedUntil.toIso8601String(),
-  });
-}
-
-Future<void> unbanUser(String phone) async {
-  final docId = phone.replaceAll(RegExp(r'\D'), '');
-  await _firestore.collection('users').doc(docId).update({
-    'bannedUntil': null,  // или удалить поле
-  });
-}
+  Future<void> unbanUser(String phone) async {
+    final docId = phone.replaceAll(RegExp(r'\D'), '');
+    await _firestore.collection('users').doc(docId).update({
+      'bannedUntil': null,
+    });
+  }
 
   Future<void> signOut() => _auth.signOut();
 
@@ -119,14 +112,12 @@ Future<void> unbanUser(String phone) async {
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception('Пользователь не авторизован');
-      // Проверка пароля (переаутентификация)
       final cred = EmailAuthProvider.credential(
         email: user.email!,
         password: password,
       );
       await user.reauthenticateWithCredential(cred);
       await user.updateEmail(newEmail);
-      // обновляем в Firestore, если храним email
       final docId = phone.replaceAll(RegExp(r'\D'), '');
       await _firestore.collection('users').doc(docId).update({'email': newEmail});
     } catch (e) {

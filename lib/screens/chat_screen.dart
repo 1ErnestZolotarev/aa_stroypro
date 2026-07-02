@@ -39,76 +39,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<void> _showOptionsDialog(String messageId, String currentText) async {
-    final action = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Действие с сообщением'),
-        content: const Text('Выберите, что сделать:'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'edit'),
-            child: const Text('Редактировать'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'delete'),
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
-          ),
-        ],
-      ),
+  Future<void> _deleteMessage(String messageId) async {
+    await _firestore.deleteMessage(widget.chatId, messageId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Сообщение удалено')),
     );
-
-    if (action == 'edit') {
-      await _showEditDialog(messageId, currentText);
-    } else if (action == 'delete') {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Удалить сообщение?'),
-          content: const Text('Это действие необратимо.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Удалить', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        ),
-      );
-      if (confirm == true) {
-        await _firestore.deleteMessage(widget.chatId, messageId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Сообщение удалено')),
-        );
-      }
-    }
-  }
-
-  Future<void> _showEditDialog(String messageId, String currentText) async {
-    final controller = TextEditingController(text: currentText);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Редактировать сообщение'),
-        content: TextField(controller: controller, maxLines: 3),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('Сохранить')),
-        ],
-      ),
-    );
-    if (result != null && result != currentText) {
-      await FirebaseFirestore.instance
-          .collection('chats')
-          .doc(widget.chatId)
-          .collection('messages')
-          .doc(messageId)
-          .update({'text': result, 'edited': true});
-    }
   }
 
   @override
@@ -116,7 +51,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final u = context.read<OurAuth.AuthProvider>().user!;
     final isAdmin = u.isAdmin;
     return Scaffold(
-      resizeToAvoidBottomInset: false, // отключаем автоматическое изменение размера
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('Чат')),
       body: Column(
         children: [
@@ -190,12 +125,19 @@ class _ChatScreenState extends State<ChatScreen> {
                     );
 
                     if (isAdmin) {
-                      return GestureDetector(
-                        onLongPress: () => _showOptionsDialog(messageId, text),
-                        child: Align(
-                          alignment: me ? Alignment.centerRight : Alignment.centerLeft,
-                          child: messageBubble,
-                        ),
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Align(
+                              alignment: me ? Alignment.centerRight : Alignment.centerLeft,
+                              child: messageBubble,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                            onPressed: () => _deleteMessage(messageId),
+                          ),
+                        ],
                       );
                     } else {
                       return Align(
@@ -251,6 +193,8 @@ class _ChatScreenState extends State<ChatScreen> {
       timestamp: DateTime.now(),
     );
     await _firestore.sendMessage(widget.chatId, message);
+    // Обновляем lastSeen
+    await context.read<OurAuth.AuthProvider>().updateLastSeen();
     _msg.clear();
     await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).update({
       'lastReadBy.${user.phone}': DateTime.now().toIso8601String(),
