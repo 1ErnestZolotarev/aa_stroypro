@@ -57,7 +57,8 @@ class ServiceOrder {
         city: m['city'] ?? '',
         address: m['address'],
         type: m['type'] ?? 'request',
-        keywords: List<String>.from(m['keywords'] ?? []),
-        createdAt: DateTime.parse(m['createdAt']),
+        // Исправление: явное приведение к List<String> и fallback на пустой список
+        keywords: (m['keywords'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        createdAt: m['createdAt'] != null ? DateTime.parse(m['createdAt']) : DateTime.now(),
       );
 }

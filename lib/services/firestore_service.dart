@@ -18,7 +18,10 @@ class FirestoreService {
         .orderBy('createdAt', descending: true);
 
     if (cities != null && cities.isNotEmpty) {
-      query = query.where('city', whereIn: cities);
+      final cleanCities = cities.where((c) => c.isNotEmpty).toList();
+      if (cleanCities.isNotEmpty) {
+        query = query.where('city', whereIn: cleanCities);
+      }
     }
     if (searchWord != null && searchWord.isNotEmpty) {
       query = query.where('keywords', arrayContains: searchWord.toLowerCase());

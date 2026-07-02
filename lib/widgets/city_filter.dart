@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:multi_select_flutter/multi_select_flutter.dart';
 
 class CityFilter extends StatefulWidget {
   final List<String> selectedCities;
@@ -28,28 +27,33 @@ class _CityFilterState extends State<CityFilter> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 8.0, top: 4.0),
-          child: Text(
-            'Фильтр по городам:',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-        ),
-        MultiSelectChipField(
-          items: _allCities.map((city) => MultiSelectItem(city, city)).toList(),
-          initialValue: widget.selectedCities,
-          onTap: (values) {
-            widget.onChanged(values);
-          },
-          chipColor: Colors.orange,
-          selectedChipColor: Colors.orange.shade700,
-          textStyle: const TextStyle(color: Colors.white),
-          selectedTextStyle: const TextStyle(color: Colors.white),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: Wrap(
+        spacing: 8.0,
+        runSpacing: 4.0,
+        children: _allCities.map((city) {
+          final isSelected = widget.selectedCities.contains(city);
+          return ChoiceChip(
+            label: Text(city),
+            selected: isSelected,
+            onSelected: (selected) {
+              List<String> newSelection = List.from(widget.selectedCities);
+              if (selected) {
+                newSelection.add(city);
+              } else {
+                newSelection.remove(city);
+              }
+              widget.onChanged(newSelection);
+            },
+            selectedColor: Colors.orange,
+            backgroundColor: Colors.grey.shade200,
+            labelStyle: TextStyle(
+              color: isSelected ? Colors.white : Colors.black87,
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

@@ -1,44 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
-class AuthProvider extends ChangeNotifier {
-  final AuthService _authService = AuthService();
+class AuthProvider with ChangeNotifier {
+  final AuthService _auth = AuthService();
   AppUser? _user;
-  bool _isLoading = false;
+  bool _loading = false;
+  String? _error;
+  String? _currentPhone;
 
   AppUser? get user => _user;
-  bool get isLoading => _isLoading;
-  String? get currentPhone => _user?.phone;
+  bool get loading => _loading;
+  String? get error => _error;
+  String? get currentPhone => _currentPhone;
 
-  Future<void> loadUser(String phone) async {
-    _isLoading = true;
-    notifyListeners();
+  Future<void> _updateFcmToken(String phone) async {
     try {
-      _user = await _authService.getCurrentUser(phone);
-    } catch (e) {
-      print('Error loading user: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> signIn(String phone, String password) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      _user = await _authService.signIn(phone, password);
-      if (_user != null) {
-        await updateLastSeen(); // обновляем время последнего посещения
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        final docId = phone.replaceAll(RegExp(r'\D'), '');
+        await FirebaseFirestore.instance.collection('users').doc(docId).update({
+          'fcmToken': token,
+        });
       }
     } catch (e) {
-      print('Error signing in: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      debugPrint('Ошибка сохранения FCM токена: $e');
     }
   }
 
@@ -50,82 +38,54 @@ class AuthProvider extends ChangeNotifier {
     String? email,
     required String password,
   }) async {
-    _isLoading = true;
-    notifyListeners();
+    _loading = true; _error = null; notifyListeners();
     try {
-      _user = await _authService.register(
-        phone: phone,
-        name: name,
-        city: city,
-        role: role,
-        email: email,
-        password: password,
-      );
-      if (_user != null) {
-        await updateLastSeen();
-      }
-    } catch (e) {
-      print('Error registering: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+      _user = await _auth.register(phone: phone, name: name, city: city, role: role, email: email, password: password);
+      _currentPhone = phone;
+      await _updateFcmToken(phone);
+    } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  Future<void> logout() async {
-    await _authService.signOut();
-    _user = null;
-    notifyListeners();
+  Future<void> signIn(String phone, String password) async {
+    _loading = true; _error = null; notifyListeners();
+    try {
+      _user = await _auth.signIn(phone, password);
+      _currentPhone = phone;
+      await _updateFcmToken(phone);
+    } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  Future<void> updateProfile({required String name, required String city, required String role}) async {
-    if (_user == null) return;
+  Future<void> updateProfile({String? name, String? city, String? role}) async {
+    if (_user == null || _currentPhone == null) return;
+    _loading = true; notifyListeners();
     try {
-      final docId = _user!.phone.replaceAll(RegExp(r'\D'), '');
+      final docId = _currentPhone!.replaceAll(RegExp(r'\D'), '');
       await FirebaseFirestore.instance.collection('users').doc(docId).update({
-        'name': name,
-        'city': city,
-        'role': role,
+        if (name != null) 'name': name,
+        if (city != null) 'city': city,
+        if (role != null) 'role': role,
       });
       _user = AppUser(
-        phone: _user!.phone,
-        name: name,
-        city: city,
-        role: role,
+        phone: _currentPhone!,
+        name: name ?? _user!.name,
+        city: city ?? _user!.city,
+        role: role ?? _user!.role,
         uid: _user!.uid,
         isAdmin: _user!.isAdmin,
         bannedUntil: _user!.bannedUntil,
         lastSeen: _user!.lastSeen,
         createdAt: _user!.createdAt,
       );
-      notifyListeners();
-    } catch (e) {
-      print('Error updating profile: $e');
-    }
+    } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  Future<void> updateLastSeen() async {
-    if (_user == null) return;
-    try {
-      final docId = _user!.phone.replaceAll(RegExp(r'\D'), '');
-      await FirebaseFirestore.instance.collection('users').doc(docId).update({
-        'lastSeen': DateTime.now().toIso8601String(),
-      });
-      // обновляем локальный объект, чтобы не делать повторный запрос
-      _user = AppUser(
-        phone: _user!.phone,
-        name: _user!.name,
-        city: _user!.city,
-        role: _user!.role,
-        uid: _user!.uid,
-        isAdmin: _user!.isAdmin,
-        bannedUntil: _user!.bannedUntil,
-        lastSeen: DateTime.now(),
-        createdAt: _user!.createdAt,
-      );
-      notifyListeners();
-    } catch (e) {
-      print('Error updating lastSeen: $e');
-    }
+  Future<void> logout() async {
+    await _auth.signOut();
+    _user = null;
+    _currentPhone = null;
+    notifyListeners();
   }
 }
