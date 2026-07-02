@@ -11,7 +11,6 @@ class CityFilter extends StatefulWidget {
 }
 
 class _CityFilterState extends State<CityFilter> {
-  // Список доступных городов (можно расширить)
   final List<String> _allCities = [
     'Москва',
     'Санкт-Петербург',
