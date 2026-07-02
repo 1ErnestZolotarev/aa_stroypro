@@ -17,7 +17,7 @@ android {
         applicationId = "com.example.aa_stroypro"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        versionCode = 7
         versionName = flutter.versionName
     }
 

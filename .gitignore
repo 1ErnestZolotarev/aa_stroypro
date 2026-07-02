@@ -4,3 +4,6 @@ build/
 .idea/
 .vscode/
 *.lock
+.flutter-plugins-dependencies
+android/.kotlin/
+.firebaserc

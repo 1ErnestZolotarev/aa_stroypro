@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';   // <-- новый импорт
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart' as OurAuth;
 import 'providers/order_provider.dart';
@@ -17,16 +19,60 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    // Включаем сохранение сессии (запоминание входа)
-    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (_) {}
+
+  // Запрос разрешения на уведомления
+  final messaging = FirebaseMessaging.instance;
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+  // Обработка нажатия на уведомление (когда приложение было закрыто)
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    // Можно навигировать на заказ, но пока оставим заглушку
+  });
 
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Timer? _onlineTimer;
+  bool _timerStarted = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_timerStarted) {
+      _startOnlineTimer();
+      _timerStarted = true;
+    }
+  }
+
+  void _startOnlineTimer() {
+    _onlineTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      final user = context.read<OurAuth.AuthProvider>().user;
+      if (user != null && user.phone.isNotEmpty) {
+        final docId = user.phone.replaceAll(RegExp(r'\D'), '');
+        FirebaseFirestore.instance.collection('users').doc(docId).update({
+          'lastSeen': DateTime.now().toIso8601String(),
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _onlineTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => MultiProvider(
@@ -38,9 +84,23 @@ class MyApp extends StatelessWidget {
       title: 'ААСтройПро',
       theme: ThemeData(primarySwatch: Colors.orange),
       debugShowCheckedModeBanner: false,
-      home: Consumer<OurAuth.AuthProvider>(builder: (_, a, __) => a.user != null
-        ? AdaptiveLayout(mobileBody: const HomeScreen(), tabletBody: const Row(children: [Expanded(flex:2, child: HomeScreen()), VerticalDivider(width:1), Expanded(flex:3, child: Center(child: Text('Выберите объявление')))]))
-        : const StartScreen()),
+      home: Consumer<OurAuth.AuthProvider>(
+        builder: (_, a, __) => a.user != null
+            ? AdaptiveLayout(
+                mobileBody: const HomeScreen(),
+                tabletBody: const Row(
+                  children: [
+                    Expanded(flex: 2, child: HomeScreen()),
+                    VerticalDivider(width: 1),
+                    Expanded(
+                      flex: 3,
+                      child: Center(child: Text('Выберите объявление')),
+                    ),
+                  ],
+                ),
+              )
+            : const StartScreen(),
+      ),
       routes: {
         '/create_order': (_) => const CreateOrderScreen(),
         '/profile': (_) => const ProfileScreen(),

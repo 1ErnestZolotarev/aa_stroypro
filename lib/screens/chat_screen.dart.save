@@ -7,8 +7,7 @@ import '../providers/auth_provider.dart' as OurAuth;
 import '../services/firestore_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  final String chatId;
-  const ChatScreen({required this.chatId, super.key});
+  final String chatId;  const ChatScreen({required this.chatId, super.key});
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
@@ -39,6 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  // Диалог с выбором действия (для админа)
   Future<void> _showOptionsDialog(String messageId, String currentText) async {
     final action = await showDialog<String>(
       context: context,
@@ -88,6 +88,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // Редактирование (вызывается из диалога)
   Future<void> _showEditDialog(String messageId, String currentText) async {
     final controller = TextEditingController(text: currentText);
     final result = await showDialog<String>(
@@ -116,7 +117,10 @@ class _ChatScreenState extends State<ChatScreen> {
     final u = context.read<OurAuth.AuthProvider>().user!;
     final isAdmin = u.isAdmin;
     return Scaffold(
-      appBar: AppBar(title: const Text('Чат')),
+      appBar: AppBar(
+        title: const Text('Чат'),
+        // можно добавить имя собеседника, если загрузить из данных чата, но пока не будем усложнять
+      ),
       body: Column(children: [
         Expanded(child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('chats').doc(widget.chatId).collection('messages').orderBy('timestamp', descending: false).snapshots(),
@@ -138,6 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 final edited = d['edited'] == true;
                 final text = d['text'] ?? '';
                 final messageId = msgs[i].id;
+                // Имя отправителя – если есть senderName, иначе телефон
                 final senderName = d['senderName'] ?? d['senderId'] ?? 'Пользователь';
 
                 Widget messageBubble = Container(
@@ -151,7 +156,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!me)
+                      if (!me) // показываем имя только для сообщений собеседника
                         Text(
                           senderName,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueGrey),
@@ -163,6 +168,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 );
 
+                // Если админ – долгое нажатие открывает меню
                 if (isAdmin) {
                   return GestureDetector(
                     onLongPress: () => _showOptionsDialog(messageId, text),
@@ -190,12 +196,13 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // Отправка сообщения с именем отправителя
   Future<void> _send(AppUser user) async {
     final t = _msg.text.trim(); if (t.isEmpty) return;
     final message = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       senderId: user.phone,
-      senderName: user.name,
+      senderName: user.name, // <-- добавляем имя
       text: t,
       timestamp: DateTime.now(),
     );
