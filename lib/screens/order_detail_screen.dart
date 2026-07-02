@@ -37,9 +37,59 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     });
   }
 
-  Future<void> _findChat() async { /* без изменений */ }
-  Future<String> _createChat() async { /* без изменений */ }
-  Future<void> _openChat() async { /* без изменений */ }
+  Future<void> _findChat() async {
+    final u = context.read<OurAuth.AuthProvider>().user;
+    if (u == null) return;
+    final s = await FirebaseFirestore.instance.collection('chats')
+        .where('participants', arrayContains: u.phone)
+        .where('orderId', isEqualTo: widget.order.id)
+        .get();
+    for (var d in s.docs) {
+      final participants = List<String>.from(d.data()['participants'] ?? []);
+      if (participants.contains(widget.order.authorId) && 
+          participants.contains(u.phone)) {
+        setState(() => _chatId = d.id);
+        return;
+      }
+    }
+  }
+
+  Future<String> _createChat() async {
+    final u = context.read<OurAuth.AuthProvider>().user!;
+    final s = await FirebaseFirestore.instance.collection('chats')
+        .where('participants', arrayContains: u.phone)
+        .where('orderId', isEqualTo: widget.order.id)
+        .get();
+    for (var d in s.docs) {
+      final participants = List<String>.from(d.data()['participants'] ?? []);
+      if (participants.contains(widget.order.authorId) && 
+          participants.contains(u.phone)) {
+        return d.id;
+      }
+    }
+    final ref = FirebaseFirestore.instance.collection('chats').doc();
+    await ref.set({
+      'participants': [u.phone, widget.order.authorId],
+      'participantUids': [u.uid ?? '', widget.order.authorUid ?? ''],
+      'orderId': widget.order.id,
+      'lastMessage': 'Чат создан',
+      'lastMessageTime': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+    return ref.id;
+  }
+
+  Future<void> _openChat() async {
+    setState(() => _loading = true);
+    try {
+      final id = await _createChat();
+      if (mounted && id.isNotEmpty) {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chatId: id)));
+        _findChat();
+      }
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e'))); }
+    setState(() => _loading = false);
+  }
 
   Future<void> _banUser() async {
     final confirm = await showDialog<bool>(
@@ -56,37 +106,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (confirm != true) return;
 
     try {
-      final phone = widget.order.authorId;
-      final docId = phone.replaceAll(RegExp(r'\D'), '');
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(docId).get();
-      if (!userDoc.exists) {
-        await FirebaseFirestore.instance.collection('users').doc(docId).set({
-          'phone': phone,
-          'bannedUntil': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
-          'createdAt': DateTime.now().toIso8601String(),
-          'role': 'customer',
-          'name': '',
-          'city': '',
-        });
-      } else {
-        await AuthService().banUser(phone, 24);
-      }
+      await AuthService().banUser(widget.order.authorId, 24);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Пользователь забанен на 24 часа')),
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка бана: $e')));
+        debugPrint('Ошибка бана: $e');
+      }
     }
   }
 
   Future<void> _unbanUser() async {
     try {
       await AuthService().unbanUser(widget.order.authorId);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Бан снят')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Бан снят')));
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка разбана: $e')));
+        debugPrint('Ошибка разбана: $e');
+      }
     }
   }
 
@@ -103,10 +147,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     );
     if (confirm == true) {
-      await FirestoreService().deleteOrder(widget.order.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Объявление удалено')));
-        Navigator.pop(context); // возвращаемся на предыдущий экран
+      try {
+        await FirestoreService().deleteOrder(widget.order.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Объявление удалено')));
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка удаления: $e')));
+        }
       }
     }
   }
