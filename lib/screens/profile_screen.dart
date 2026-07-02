@@ -63,7 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Spacer(),
             ElevatedButton(
               onPressed: () async {
-                await _authService.signOut();
+                await auth.logout();
                 Navigator.pushReplacementNamed(context, '/login');
               },
               child: const Text('Выйти'),
