@@ -8,7 +8,7 @@ class FirestoreService {
 
   // --- Orders ---
   Stream<List<ServiceOrder>> getOrdersStream({
-    String? city,
+    List<String>? cities,
     String? searchWord,
     DocumentSnapshot? startAfter,
     int limit = 20,
@@ -17,8 +17,8 @@ class FirestoreService {
         .collection('orders')
         .orderBy('createdAt', descending: true);
 
-    if (city != null && city.isNotEmpty) {
-      query = query.where('city', isEqualTo: city);
+    if (cities != null && cities.isNotEmpty) {
+      query = query.where('city', whereIn: cities);
     }
     if (searchWord != null && searchWord.isNotEmpty) {
       query = query.where('keywords', arrayContains: searchWord.toLowerCase());
@@ -55,14 +55,12 @@ class FirestoreService {
             snap.docs.map((doc) => Chat.fromMap(doc.id, doc.data() as Map<String, dynamic>)).toList());
   }
 
-  /// Получить данные одного чата по ID (для отображения в AppBar и т.п.)
   Future<Chat?> getChat(String chatId) async {
     final doc = await _firestore.collection('chats').doc(chatId).get();
     if (!doc.exists) return null;
     return Chat.fromMap(doc.id, doc.data() as Map<String, dynamic>);
   }
 
-  /// Создать или получить существующий чат между двумя пользователями
   Future<String> createOrGetChat(String userId1, String userId2,
       {String? orderId}) async {
     final existing = await _firestore
@@ -83,7 +81,6 @@ class FirestoreService {
     return chatRef.id;
   }
 
-  /// Отправить сообщение (сохраняет в подколлекции messages и обновляет lastMessage в чате)
   Future<void> sendMessage(String chatId, Message message) async {
     await _firestore
         .collection('chats')
@@ -97,7 +94,6 @@ class FirestoreService {
     });
   }
 
-  /// Удалить сообщение по ID из подколлекции
   Future<void> deleteMessage(String chatId, String messageId) async {
     await _firestore
         .collection('chats')
@@ -107,7 +103,6 @@ class FirestoreService {
         .delete();
   }
 
-  /// Получить поток сообщений для чата
   Stream<List<Message>> getMessages(String chatId) {
     return _firestore
         .collection('chats')
@@ -119,7 +114,6 @@ class FirestoreService {
             snap.docs.map((doc) => Message.fromMap(doc.id, doc.data() as Map<String, dynamic>)).toList());
   }
 
-  /// Отметить сообщения как прочитанные для конкретного пользователя
   Future<void> markAsRead(String chatId, String userId) async {
     await _firestore.collection('chats').doc(chatId).update({
       'lastReadBy.$userId': DateTime.now().toIso8601String(),

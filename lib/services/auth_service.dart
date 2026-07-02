@@ -87,20 +87,20 @@ class AuthService {
     return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
-  Future<void> banUser(String phone, int hours) async {
-    final docId = phone.replaceAll(RegExp(r'\D'), '');
-    final bannedUntil = DateTime.now().add(Duration(hours: hours));
-    await _firestore.collection('users').doc(docId).update({
-      'bannedUntil': bannedUntil.toIso8601String(),
-    });
-  }
+Future<void> banUser(String phone, int hours) async {
+  final docId = phone.replaceAll(RegExp(r'\D'), '');
+  final bannedUntil = DateTime.now().add(Duration(hours: hours));
+  await _firestore.collection('users').doc(docId).update({
+    'bannedUntil': bannedUntil.toIso8601String(),
+  });
+}
 
-  Future<void> unbanUser(String phone) async {
-    final docId = phone.replaceAll(RegExp(r'\D'), '');
-    await _firestore.collection('users').doc(docId).update({
-      'bannedUntil': '',
-    });
-  }
+Future<void> unbanUser(String phone) async {
+  final docId = phone.replaceAll(RegExp(r'\D'), '');
+  await _firestore.collection('users').doc(docId).update({
+    'bannedUntil': null,  // или удалить поле
+  });
+}
 
   Future<void> signOut() => _auth.signOut();
 

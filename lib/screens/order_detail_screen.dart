@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart' as OurAuth;
 import '../services/firestore_service.dart';
 import 'create_order_screen.dart';
@@ -16,11 +18,13 @@ class OrderDetailScreen extends StatefulWidget {
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   String? _chatId;
   bool _loading = false;
+  bool _isAuthorOnline = false;
 
   @override
   void initState() {
     super.initState();
     _checkChat();
+    _loadAuthorStatus();
   }
 
   Future<void> _checkChat() async {
@@ -31,6 +35,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final firestore = FirestoreService();
     final chatId = await firestore.createOrGetChat(user.phone, otherId, orderId: widget.order.id);
     setState(() => _chatId = chatId);
+  }
+
+  Future<void> _loadAuthorStatus() async {
+    final docId = widget.order.authorPhone.replaceAll(RegExp(r'\D'), '');
+    final doc = await FirebaseFirestore.instance.collection('users').doc(docId).get();
+    if (doc.exists) {
+      final author = AppUser.fromMap(doc.data()!);
+      setState(() {
+        _isAuthorOnline = author.isOnline;
+      });
+    }
   }
 
   Future<String> _createChat(String otherUserId) async {
@@ -81,6 +96,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             _buildInfoRow('Тип', widget.order.type),
             _buildInfoRow('Бюджет', '${widget.order.budget} ₽'),
             _buildInfoRow('Дата', widget.order.createdAt.toLocal().toString().substring(0, 16)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text('Статус автора:'),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 6,
+                  backgroundColor: _isAuthorOnline ? Colors.green : Colors.grey,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _isAuthorOnline ? 'онлайн' : 'не в сети',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
             const Divider(height: 32),
             if (user != null && user.phone != widget.order.authorPhone)
               if (_loading)

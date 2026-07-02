@@ -89,3 +89,13 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 }
+
+  Future<void> updateLastSeen() async {
+    if (user == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user!.phone.replaceAll(RegExp(r'\D'), ''))
+        .update({
+      'lastSeen': DateTime.now().toIso8601String(),
+    });
+  }
